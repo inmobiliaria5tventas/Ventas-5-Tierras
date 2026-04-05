@@ -17,23 +17,32 @@
     };
 
     function init() {
-        showLoading();
-        DataModule.init();
-        initMap();
-        renderLotes();
-        updateStats();
-        setupEventListeners();
-        simulateOnlineStatus();
+        try {
+            showLoading();
+            DataModule.init();
+            initMap();
+            renderLotes();
+            updateStats();
+            setupEventListeners();
+            simulateOnlineStatus();
 
-        // ── Sync con Google Sheets ──
-        if (typeof SyncModule !== 'undefined') {
-            SyncModule.init('El Copihue').then(function() {
-                renderLotes();
-                updateStats();
-            });
+            // ── Sync con Google Sheets ──
+            if (typeof SyncModule !== 'undefined') {
+                SyncModule.init('El Copihue')
+                    .then(function() {
+                        renderLotes();
+                        updateStats();
+                    })
+                    .finally(() => {
+                        hideLoading();
+                    });
+            } else {
+                hideLoading();
+            }
+        } catch (error) {
+            console.error('Error during El Copihue initialization:', error);
+            hideLoading();
         }
-
-        hideLoading();
     }
 
     window.refreshMap = function() {
@@ -43,17 +52,28 @@
 
     function showLoading() {
         const bar = document.querySelector('.loading-bar-inner');
-        if (bar) bar.style.width = '100%';
+        if (bar) {
+            let w = 0;
+            const interval = setInterval(() => {
+                w += Math.random() * 25;
+                if (w > 90) w = 90; // Stay at 90 until hideLoading completes
+                bar.style.width = w + '%';
+                if (w >= 90) clearInterval(interval);
+            }, 100);
+        }
     }
 
     function hideLoading() {
+        const bar = document.querySelector('.loading-bar-inner');
+        if (bar) bar.style.width = '100%';
+
         setTimeout(() => {
             const screen = document.querySelector('.loading-screen');
             if (screen) {
                 screen.classList.add('fade-out');
                 setTimeout(() => screen.remove(), 500);
             }
-        }, 800);
+        }, 600);
     }
 
     function initMap() {
@@ -327,5 +347,6 @@
         window.addEventListener('offline', () => isOnline = false);
     }
 
-    init();
+    // ── Start ──
+    document.addEventListener('DOMContentLoaded', init);
 })();

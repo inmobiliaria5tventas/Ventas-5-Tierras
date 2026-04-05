@@ -130,7 +130,7 @@ const DataModule = (() => {
     function getStats() {
         const stats = { disponible: 0, reservada: 0, vendida: 0 };
         lotesData.features.forEach(f => {
-            const e = f.properties.estado.toLowerCase();
+            const e = String(f.properties.estado || '').toLowerCase();
             if (e.includes('disp')) stats.disponible++;
             else if (e.includes('res')) stats.reservada++;
             else if (e.includes('vend')) stats.vendida++;
@@ -138,5 +138,5 @@ const DataModule = (() => {
         return stats;
     }
 
-    return { init, getAll, getLoteById, updateLote, getStats, reset, getSyncQueue, clearSyncQueue, formatPrice };
+    return { STORAGE_KEY, init, getAll, getLoteById, updateLote, getStats, reset, getSyncQueue, clearSyncQueue, formatPrice };
 })();
