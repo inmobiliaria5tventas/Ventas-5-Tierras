@@ -35,32 +35,24 @@
             </div>
         </div>
 
-        <!-- ═══ TOP BAR ═══ -->
-        <header class="top-bar">
-            <div class="top-bar__brand">
-                <div class="top-bar__logo">🏡</div>
-                <div>
-                    <div class="top-bar__title">Los Naranjos</div>
-                    <div class="top-bar__subtitle">Gestión de Parcelas</div>
-                </div>
-            </div>
-
-            <!-- Search Bar -->
-            <div class="top-bar__search">
-                <input type="number" id="search-input" class="search-input" placeholder="Buscar lote (ej. 14)"
-                    autocomplete="off">
-                <button id="search-btn" class="search-btn" title="Buscar">🔍</button>
-            </div>
-            <div class="top-bar__actions">
-                <div id="sync-badge" class="sync-badge hidden" title="Cambios pendientes de sincronización">
-                    <span class="sync-badge__icon">🔄</span>
-                    <span id="sync-count">0</span>
-                </div>
-                <div id="conn-status" class="conn-status conn-status--online">
-                    <span class="conn-status__dot"></span> Online
+        <!-- ═══ TOP BAR (Standardized Premium) ═══ -->
+        <header class="app-header">
+            <div class="header-content">
+                <a href="../../index.html" class="back-btn" title="Volver al mapa general">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </a>
+                <div style="text-align: right;">
+                    <div style="font-size: 11px; color: var(--text-dim);">PROYECTO</div>
+                    <div style="font-size: 18px; font-weight: 800;">Los Naranjos</div>
                 </div>
             </div>
         </header>
+
+        <!-- ═══ SEARCH (Standardized Premium) ═══ -->
+        <div class="search-container">
+            <input type="text" id="search-input" class="search-input" placeholder="Buscar lote (ej: 42)..." inputmode="numeric">
+            <button id="search-btn" class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
 
         <!-- ═══ MAP ═══ -->
         <div id="map"></div>
