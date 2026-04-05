@@ -26,6 +26,15 @@
             setupEventListeners();
             simulateOnlineStatus();
 
+            let loaded = false;
+            const forceLoad = setTimeout(() => {
+                if (!loaded) {
+                    console.warn('Sync taking too long, showing map with local data...');
+                    hideLoading();
+                    loaded = true;
+                }
+            }, 5000);
+
             // ── Sync con Google Sheets ──
             if (typeof SyncModule !== 'undefined') {
                 SyncModule.init('El Copihue')
@@ -34,10 +43,15 @@
                         updateStats();
                     })
                     .finally(() => {
-                        hideLoading();
+                        if (!loaded) {
+                            clearTimeout(forceLoad);
+                            hideLoading();
+                            loaded = true;
+                        }
                     });
             } else {
                 hideLoading();
+                loaded = true;
             }
         } catch (error) {
             console.error('Error during El Copihue initialization:', error);
@@ -241,6 +255,16 @@
     }
 
     function setupEventListeners() {
+        // Reset Button in Header
+        const resetBtn = document.getElementById('header-reset-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (confirm('¿Estás seguro de que deseas restablecer los datos locales? Se volverán a descargar desde el servidor.')) {
+                    DataModule.reset();
+                }
+            });
+        }
+
         document.getElementById('bs-close').addEventListener('click', closeBottomSheet);
         document.getElementById('bottomsheet-overlay').addEventListener('click', closeBottomSheet);
         document.querySelectorAll('.status-btn').forEach(btn => {
