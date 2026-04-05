@@ -128,7 +128,13 @@
         if (lotesLayer) map.removeLayer(lotesLayer);
         const collection = DataModule.getAll();
 
-        lotesLayer = L.geoJSON(collection, {
+        // ── Filter invalid geometries to prevent Leaflet crash ──
+        const validFeatures = collection.features.filter(f => 
+            f.geometry && f.geometry.coordinates && f.geometry.coordinates.length > 0
+        );
+        const validCollection = { ...collection, features: validFeatures };
+
+        lotesLayer = L.geoJSON(validCollection, {
             style: (feature) => {
                 const colors = ESTADO_COLORS[feature.properties.estado] || ESTADO_COLORS['Disponible'];
                 return { fillColor: colors.fill, fillOpacity: colors.opacity, color: colors.stroke, weight: 2 };
