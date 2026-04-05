@@ -18,23 +18,27 @@
     };
 
     function init() {
-        showLoading();
-        DataModule.init();
-        initMap();
-        renderLotes();
-        updateStats();
-        setupEventListeners();
-        simulateOnlineStatus();
+        try {
+            showLoading();
+            DataModule.init();
+            initMap();
+            renderLotes();
+            updateStats();
+            setupEventListeners();
+            simulateOnlineStatus();
 
-        // ── Sync con Google Sheets ──
-        if (typeof SyncModule !== 'undefined') {
-            SyncModule.init('Los Encinos').then(function() {
-                renderLotes();
-                updateStats();
-            });
+            // ── Sync con Google Sheets ──
+            if (typeof SyncModule !== 'undefined') {
+                SyncModule.init('Los Encinos').then(function() {
+                    renderLotes();
+                    updateStats();
+                });
+            }
+        } catch (error) {
+            console.error('Error during Los Encinos initialization:', error);
+        } finally {
+            hideLoading();
         }
-
-        hideLoading();
     }
 
     window.refreshMap = function() {
