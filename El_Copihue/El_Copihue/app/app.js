@@ -241,6 +241,16 @@
     }
 
     function setupEventListeners() {
+        // Reset Button in Header
+        const resetBtn = document.getElementById('header-reset-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (confirm('¿Estás seguro de que deseas restablecer los datos locales? Se volverán a descargar desde el servidor.')) {
+                    DataModule.reset();
+                }
+            });
+        }
+
         document.getElementById('bs-close').addEventListener('click', closeBottomSheet);
         document.getElementById('bottomsheet-overlay').addEventListener('click', closeBottomSheet);
         document.querySelectorAll('.status-btn').forEach(btn => {

@@ -22,6 +22,11 @@ const DataModule = (() => {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             lotesData = JSON.parse(saved);
+            // Migrate old data (rename 'Estado' to 'estado' if needed)
+            lotesData.features.forEach(f => {
+                if (!f.properties.estado && f.properties.Estado) f.properties.estado = f.properties.Estado;
+                if (!f.properties.id_lote && f.properties.Lote) f.properties.id_lote = f.properties.Lote;
+            });
             // Always sync status from raw files to handle fresh exports
             syncStatus(window.json_Vendidas_3, 'Vendida');
             syncStatus(window.json_Reservadas_4, 'Reservada');
@@ -130,7 +135,8 @@ const DataModule = (() => {
     function getStats() {
         const stats = { disponible: 0, reservada: 0, vendida: 0 };
         lotesData.features.forEach(f => {
-            const e = String(f.properties.estado || '').toLowerCase();
+            const rawEstado = f.properties.estado || f.properties.Estado || '';
+            const e = String(rawEstado).toLowerCase();
             if (e.includes('disp')) stats.disponible++;
             else if (e.includes('res')) stats.reservada++;
             else if (e.includes('vend')) stats.vendida++;
