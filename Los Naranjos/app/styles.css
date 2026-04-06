@@ -669,33 +669,6 @@ body {
     color: var(--text-muted);
 }
 
-/* ── Comprobante Row ── */
-.comprobante-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 16px;
-    background: var(--bg-glass);
-    border: 1px solid var(--border-glass);
-    border-radius: var(--radius-md);
-    margin-bottom: 16px;
-    cursor: pointer;
-    transition: var(--transition-fast);
-}
-
-.comprobante-row:hover {
-    background: var(--bg-glass-hover);
-}
-
-.comprobante-row__icon {
-    font-size: 20px;
-}
-
-.comprobante-row__text {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--accent-blue);
-}
 
 /* ── Last Modified ── */
 .last-modified {
