@@ -189,6 +189,13 @@
         .comment-btn__delete:active { background: rgba(239,68,68,0.28); }
         .comment-btn__delete.visible { display: flex; }
 
+        .price-edit-toggle { background: rgba(255,255,255,0.05); border: none; color: var(--primary); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .price-edit-toggle:active { transform: scale(0.9); background: rgba(59, 130, 246, 0.2); }
+        .price-input-container { display: none; align-items: center; gap: 10px; margin-top: 8px; width: 100%; }
+        .price-input-container.active { display: flex; }
+        .price-input { flex: 1; background: rgba(0,0,0,0.2); border: 1px solid var(--primary); border-radius: 10px; padding: 10px; color: white; font-family: inherit; font-size: 15px; font-weight: 600; outline: none; }
+        .price-save-small { background: var(--primary); border: none; color: white; padding: 10px 15px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
         .lote-label { background: transparent !important; border: none !important; box-shadow: none !important; color: white !important; font-weight: 800 !important; text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,1) !important; pointer-events: none !important; }
         .map-low-zoom .lote-label { display: none !important; }
 
@@ -277,11 +284,18 @@
             </button>
         </div>
 
-        <div id="price-row" class="detail-row">
+        <div id="price-row" class="detail-row" style="flex-wrap: wrap;">
             <div class="detail-row__icon">💰</div>
-            <div>
+            <div style="flex: 1;">
                 <div class="detail-row__label">Precio</div>
                 <div id="bs-price-value" class="detail-row__value">$ --</div>
+            </div>
+            <button id="price-edit-btn" class="price-edit-toggle" title="Editar precio">
+                <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <div id="price-input-panel" class="price-input-container">
+                <input type="number" id="price-input-field" class="price-input" placeholder="Nuevo precio...">
+                <button id="price-save-btn" class="price-save-small">Guardar</button>
             </div>
         </div>
 
