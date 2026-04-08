@@ -276,6 +276,39 @@
             closeCommentPanel();
             showToast('Comentario borrado', 'info');
         });
+
+        // ── Price Editor ──
+        document.getElementById('price-edit-btn').addEventListener('click', () => {
+            const panel = document.getElementById('price-input-panel');
+            panel.classList.toggle('active');
+            if (panel.classList.contains('active') && selectedLote) {
+                document.getElementById('price-input-field').value = selectedLote.properties.precio || '';
+                document.getElementById('price-input-field').focus();
+            }
+        });
+
+        document.getElementById('price-save-btn').addEventListener('click', () => {
+            if (!selectedLote) return;
+            const raw = document.getElementById('price-input-field').value.trim();
+            const precio = parseInt(raw, 10);
+            if (!precio || precio <= 0) {
+                showToast('Ingresa un precio válido', 'warning');
+                return;
+            }
+            DataModule.updateLote(selectedLote.properties.id_lote, { precio: precio });
+            if (typeof SyncModule !== 'undefined') {
+                SyncModule.push(selectedLote.properties.id_lote, { precio: precio });
+            }
+            selectedLote.properties.precio = precio;
+            selectedLote.properties.precio_display = DataModule.formatPrice(precio);
+            document.getElementById('bs-price-value').textContent = DataModule.formatPrice(precio);
+            document.getElementById('price-input-panel').classList.remove('active');
+            showToast('Precio actualizado ✓', 'success');
+        });
+
+        document.getElementById('price-input-field').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') document.getElementById('price-save-btn').click();
+        });
     }
 
     function locateUser() {
