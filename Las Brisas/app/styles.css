@@ -111,6 +111,22 @@ body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(
 .toast--warning { background: rgba(234, 179, 8, 0.9); }
 @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
+/* ── Numpad Overlay ── */
+.numpad-overlay { position: fixed; inset: 0; z-index: 2000; background: rgba(10, 14, 26, 0.97); backdrop-filter: blur(20px); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.numpad-overlay.active { opacity: 1; pointer-events: auto; }
+.numpad__header { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 320px; margin-bottom: 30px; padding: 0 10px; }
+.numpad__title { font-size: 18px; font-weight: 700; color: white; }
+.numpad__cancel { background: none; border: none; color: var(--accent-blue); font-size: 15px; font-weight: 600; cursor: pointer; }
+.numpad__display { text-align: center; margin-bottom: 30px; }
+.numpad__display-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.numpad__display-value { font-family: 'Outfit', sans-serif; font-size: 36px; font-weight: 800; color: white; }
+.numpad__display-value .currency { color: var(--accent-green); }
+.numpad__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 280px; width: 100%; }
+.numpad__key { width: 100%; height: 60px; border-radius: 16px; border: 1px solid var(--border-glass); background: var(--bg-glass); color: white; font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+.numpad__key:active { transform: scale(0.92); background: rgba(255,255,255,0.12); }
+.numpad__key--back { color: var(--accent-red); font-size: 20px; }
+.numpad__key--confirm { background: linear-gradient(135deg, var(--accent-green), #16a34a); border-color: var(--accent-green); font-size: 28px; }
+
 /* ── Media Queries (Optimized & Consolidated) ── */
 @media (max-width: 480px) {
     .stat-item__count { font-size: 20px; }
