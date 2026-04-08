@@ -333,6 +333,62 @@
                 showToast('Comentario borrado', 'info');
             });
         }
+
+        // ── Price Numpad ──
+        let numpadValue = '';
+        const numpadOverlay = document.getElementById('numpad-overlay');
+        const numpadDisplayValue = document.getElementById('numpad-display-value');
+
+        if (document.getElementById('price-row')) {
+            document.getElementById('price-row').addEventListener('click', () => {
+                if (!selectedLote) return;
+                numpadValue = String(selectedLote.properties.precio || '');
+                updateNumpadDisplay();
+                if (numpadOverlay) numpadOverlay.classList.add('active');
+            });
+        }
+
+        if (document.getElementById('numpad-cancel')) {
+            document.getElementById('numpad-cancel').addEventListener('click', () => {
+                if (numpadOverlay) numpadOverlay.classList.remove('active');
+            });
+        }
+
+        document.querySelectorAll('.numpad__key').forEach(key => {
+            key.addEventListener('click', () => {
+                const k = key.dataset.key;
+                if (k === 'back') {
+                    numpadValue = numpadValue.slice(0, -1);
+                } else if (k === 'confirm') {
+                    const precio = parseInt(numpadValue, 10);
+                    if (!precio || precio <= 0) {
+                        showToast('Ingresa un precio válido', 'warning');
+                        return;
+                    }
+                    if (selectedLote) {
+                        DataModule.updateLote(selectedLote.properties.id_lote, { precio: precio });
+                        if (typeof SyncModule !== 'undefined') {
+                            SyncModule.push(selectedLote.properties.id_lote, { precio: precio });
+                        }
+                        selectedLote.properties.precio = precio;
+                        selectedLote.properties.precio_display = DataModule.formatPrice(precio);
+                        document.getElementById('bs-price-value').textContent = DataModule.formatPrice(precio);
+                        showToast('Precio actualizado ✓', 'success');
+                    }
+                    if (numpadOverlay) numpadOverlay.classList.remove('active');
+                } else {
+                    if (numpadValue.length < 12) numpadValue += k;
+                }
+                updateNumpadDisplay();
+            });
+        });
+
+        function updateNumpadDisplay() {
+            const val = parseInt(numpadValue, 10) || 0;
+            if (numpadDisplayValue) {
+                numpadDisplayValue.innerHTML = '<span class="currency">$</span> ' + val.toLocaleString('es-CL');
+            }
+        }
     }
 
     function locateUser() {
