@@ -5,6 +5,7 @@
 
 const DataModule = (() => {
     const STORAGE_KEY = 'hacienda_copihue_lotes';
+    const DATA_VERSION = 'v11_fix_lote20_edit'; // Forzamos limpieza para corregir edición Lote 20
     const PROJECT_NAME = 'El Copihue';
 
     const MAPPING = {
@@ -13,24 +14,29 @@ const DataModule = (() => {
         estado: ['Estado', 'status']
     };
 
+    function normID(id) {
+        return String(id || '').replace(/[^0-9]/g, '').replace(/^0+/, '') || '0';
+    }
+
     let lotesData = {
         type: "FeatureCollection",
         features: []
     };
 
     function init() {
+        // Auto-clear old version
+        if (localStorage.getItem(STORAGE_KEY + '_version') !== DATA_VERSION) {
+            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(STORAGE_KEY + '_sync');
+            localStorage.setItem(STORAGE_KEY + '_version', DATA_VERSION);
+        }
+
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             lotesData = JSON.parse(saved);
-            // Migrate old data (rename 'Estado' to 'estado' if needed)
-            lotesData.features.forEach(f => {
-                if (!f.properties.estado && f.properties.Estado) f.properties.estado = f.properties.Estado;
-                if (!f.properties.id_lote && f.properties.Lote) f.properties.id_lote = f.properties.Lote;
-            });
-            // Always sync status from raw files to handle fresh exports
-            syncStatus(window.json_Vendidas_3, 'Vendida');
-            syncStatus(window.json_Reservadas_4, 'Reservada');
-            save();
+            // Migration: Ensure id_lote exists on all loaded features
+            lotesData.features.forEach(f => { if (!f.properties.id_lote) f.properties.id_lote = f.properties.Lote || f.properties.name || f.properties.fid || 'S/N'; });
+            // REGLA: No llamamos a syncStatus aquí para no sobrescribir datos que ya han bajado de la nube
         } else {
             // Merge raw GeoJSON from Global variables (OpenLayers export style)
             processBatch(window.json_Disponibles_2, 'Disponible');
@@ -53,8 +59,20 @@ const DataModule = (() => {
                         lote.properties.ultima_modificacion = new Date().toISOString();
                     }
                 }
+                // Sync price if available
+                if (f.properties.Precio) {
+                    const cleanPrice = sanitizeNumber(f.properties.Precio);
+                    if (cleanPrice !== null) lote.properties.precio = cleanPrice;
+                }
             }
         });
+    }
+
+    function sanitizeNumber(val) {
+        if (val === null || val === undefined || val === '') return null;
+        if (typeof val === 'number') return val;
+        const clean = String(val).replace(/[^0-9]/g, '');
+        return clean === '' ? 0 : parseInt(clean, 10);
     }
 
     function processBatch(geoJson, defaultEstado) {
@@ -65,6 +83,8 @@ const DataModule = (() => {
             const area = findProp(f.properties, MAPPING.area) || '5.000 m²';
             const estado = findProp(f.properties, MAPPING.estado) || defaultEstado;
 
+            const cleanPrecio = sanitizeNumber(f.properties.Precio || f.properties.precio || 33000000);
+
             const normalizedFeature = {
                 type: "Feature",
                 geometry: f.geometry,
@@ -73,7 +93,7 @@ const DataModule = (() => {
                     id_lote: id_lote,
                     area: area,
                     estado: estado,
-                    precio: f.properties.Precio || 33000000,
+                    precio: cleanPrecio,
                     ultima_modificacion: new Date().toISOString()
                 }
             };
@@ -91,12 +111,21 @@ const DataModule = (() => {
     function getAll() { return lotesData; }
 
     function getLoteById(id) {
-        return lotesData.features.find(f => String(f.properties.id_lote) === String(id));
+        const nid = normID(id);
+        return lotesData.features.find(f => normID(f.properties.id_lote || f.properties.Lote || f.properties.fid || f.properties.name) === nid);
     }
 
     function updateLote(id, newData) {
         const lote = getLoteById(id);
         if (lote) {
+            // Unificar propiedades (Case Insensitive)
+            if (newData.estado) newData.Estado = newData.estado;
+            if (newData.Estado) newData.estado = newData.Estado;
+            if (newData.precio !== undefined) newData.Precio = newData.precio;
+            if (newData.Precio !== undefined) newData.precio = newData.Precio;
+            if (newData.comentario !== undefined) newData.Comentario = newData.comentario;
+            if (newData.Comentario !== undefined) newData.comentario = newData.Comentario;
+
             lote.properties = { ...lote.properties, ...newData, ultima_modificacion: new Date().toISOString() };
             save();
             addToSyncQueue(id, newData);
@@ -108,6 +137,7 @@ const DataModule = (() => {
     function reset() {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(STORAGE_KEY + '_sync');
+        localStorage.removeItem(STORAGE_KEY + '_version');
         location.reload();
     }
 
@@ -134,9 +164,6 @@ const DataModule = (() => {
 
     function getStats() {
         const stats = { disponible: 0, reservada: 0, vendida: 0 };
-        if (lotesData.features.length > 0) {
-            console.log('Diagnostic - First Feature Props:', JSON.stringify(lotesData.features[0].properties));
-        }
 
         lotesData.features.forEach(f => {
             // Robust search for any property containing 'estado' or 'status'
@@ -155,9 +182,10 @@ const DataModule = (() => {
             else if (e.includes('res')) stats.reservada++;
             else if (e.includes('vend')) stats.vendida++;
         });
-        console.log('Diagnostic - Computed Stats:', stats);
         return stats;
     }
 
     return { STORAGE_KEY, init, getAll, getLoteById, updateLote, getStats, reset, getSyncQueue, clearSyncQueue, formatPrice };
 })();
+
+

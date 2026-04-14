@@ -161,25 +161,38 @@
         layer.setStyle({ weight: 4, fillOpacity: 0.8, color: '#fff' });
 
         const props = feature.properties;
-        const isVendida = props.estado === 'Vendida';
+        const estado = props.estado || props.Estado || 'Disponible'; // Fallback safety
+        const isVendida = estado === 'Vendida';
 
         document.getElementById('bs-lote-id').textContent = `Lote ${props.id_lote}`;
         document.getElementById('bs-lote-area').textContent = props.area;
-        document.getElementById('bs-price-value').textContent = props.precio_display || DataModule.formatPrice(props.precio || 33000000);
+        
+        const displayPrice = (props.precio !== undefined && props.precio !== null) ? DataModule.formatPrice(props.precio) : DataModule.formatPrice(33000000);
+        const finalPriceDisplay = isVendida ? DataModule.formatPrice(0) : (props.precio_display || displayPrice);
+        document.getElementById('bs-price-value').textContent = finalPriceDisplay;
         
         const badge = document.getElementById('bs-current-status');
-        badge.className = `bottomsheet__current-status bottomsheet__current-status--${props.estado.toLowerCase()}`;
-        badge.innerHTML = `<span>●</span> ${props.estado}`;
+        badge.className = `bottomsheet__current-status bottomsheet__current-status--${estado.toLowerCase()}`;
+        badge.innerHTML = `<span>●</span> ${estado}`;
 
         // Buttons
         document.querySelectorAll('.status-btn').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.estado === props.estado);
+            btn.classList.toggle('active', btn.dataset.estado === estado);
         });
 
         // Visibility
         document.querySelector('.status-buttons').style.display = 'grid';
         document.getElementById('price-row').style.display = 'flex';
-        document.getElementById('bs-vendida-info').style.display = 'none';
+        
+        const vendidaInfo = document.getElementById('bs-vendida-info');
+        if (isVendida) {
+            vendidaInfo.style.display = 'block';
+            vendidaInfo.innerHTML = '⚠️ <b>Lote marcado como Vendido.</b><br>Edite con precaución si desea cambiar el estado.';
+            vendidaInfo.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+            vendidaInfo.style.color = '#ef4444';
+        } else {
+            vendidaInfo.style.display = 'none';
+        }
 
         // Last modified
         const date = props.ultima_modificacion ? new Date(props.ultima_modificacion) : new Date();
@@ -238,19 +251,45 @@
 
     function changeStatus(newEstado) {
         if (!selectedLote) return;
-        DataModule.updateLote(selectedLote.properties.id_lote, { estado: newEstado });
+        const loteId = selectedLote.properties.id_lote;
 
-        // ── Sync a Google Sheets ──
+        // ── 1. Update in-place FIRST (guarantees visual update) ──
+        selectedLote.properties.estado = newEstado;
+        selectedLote.properties.Estado = newEstado;
+
+        // ── 2. Persist to DataModule + localStorage ──
+        const updates = { estado: newEstado };
+        if (newEstado === 'Vendida') {
+            updates.precio = 0;
+            selectedLote.properties.precio = 0;
+            selectedLote.properties.precio_display = DataModule.formatPrice(0);
+        }
+        DataModule.updateLote(loteId, updates);
+
+        // ── 3. Sync to Google Sheets (fire-and-forget) ──
         if (typeof SyncModule !== 'undefined') {
-            SyncModule.push(selectedLote.properties.id_lote, { estado: newEstado });
+            SyncModule.push(loteId, updates);
         }
 
+        // ── 4. Re-render map with updated colors ──
         renderLotes();
         updateStats();
         
-        const updated = DataModule.getLoteById(selectedLote.properties.id_lote);
-        selectLote(updated, highlightedLayer);
-        showToast(`Lote ${selectedLote.properties.id_lote} → ${newEstado}`, 'success');
+        // ── 5. Re-find the new layer after re-render ──
+        const updated = DataModule.getLoteById(loteId);
+        let newLayer = null;
+        if (lotesLayer) {
+            const searchId = String(loteId).replace(/[^0-9]/g, '').replace(/^0+/, '') || '0';
+            lotesLayer.eachLayer(l => {
+                const lid = String(l.feature.properties.id_lote || '').replace(/[^0-9]/g, '').replace(/^0+/, '') || '0';
+                if (lid === searchId) newLayer = l;
+            });
+        }
+        if (updated && newLayer) {
+            highlightedLayer = newLayer;
+            selectLote(updated, newLayer);
+        }
+        showToast(`Lote ${loteId} → ${newEstado}`, 'success');
     }
 
     function updateStats() {
@@ -281,6 +320,11 @@
             if (e.key === 'Enter') searchLote();
         });
         document.getElementById('fab-locate').addEventListener('click', locateUser);
+
+        const populateBtn = document.getElementById('header-populate-btn');
+        if (populateBtn) {
+            populateBtn.addEventListener('click', pushAllToCloud);
+        }
 
         // Comment toggle
         document.getElementById('comment-toggle-btn').addEventListener('click', () => {
@@ -324,38 +368,61 @@
             showToast('Comentario borrado', 'info');
         });
 
-        // ── Price Editor ──
-        document.getElementById('price-edit-btn').addEventListener('click', () => {
-            const panel = document.getElementById('price-input-panel');
-            panel.classList.toggle('active');
-            if (panel.classList.contains('active') && selectedLote) {
-                document.getElementById('price-input-field').value = selectedLote.properties.precio || '';
-                document.getElementById('price-input-field').focus();
-            }
+        // ── Price Numpad ──
+        let numpadValue = '';
+        const numpadOverlay = document.getElementById('numpad-overlay');
+        const numpadDisplayValue = document.getElementById('numpad-display-value');
+
+        if (document.getElementById('price-row')) {
+            document.getElementById('price-row').addEventListener('click', () => {
+                if (!selectedLote) return;
+                numpadValue = String(selectedLote.properties.precio || '');
+                updateNumpadDisplay();
+                if (numpadOverlay) numpadOverlay.classList.add('active');
+            });
+        }
+
+        if (document.getElementById('numpad-cancel')) {
+            document.getElementById('numpad-cancel').addEventListener('click', () => {
+                if (numpadOverlay) numpadOverlay.classList.remove('active');
+            });
+        }
+
+        document.querySelectorAll('.numpad__key').forEach(key => {
+            key.addEventListener('click', () => {
+                const k = key.dataset.key;
+                if (k === 'back') {
+                    numpadValue = numpadValue.slice(0, -1);
+                } else if (k === 'confirm') {
+                    const precio = numpadValue === '' ? 0 : parseInt(numpadValue, 10);
+                    if (isNaN(precio) || precio < 0) {
+                        showToast('Ingresa un precio válido', 'warning');
+                        return;
+                    }
+                    if (selectedLote) {
+                        DataModule.updateLote(selectedLote.properties.id_lote, { precio: precio });
+                        if (typeof SyncModule !== 'undefined') {
+                            SyncModule.push(selectedLote.properties.id_lote, { precio: precio });
+                        }
+                        selectedLote.properties.precio = precio;
+                        selectedLote.properties.precio_display = DataModule.formatPrice(precio);
+                        document.getElementById('bs-price-value').textContent = DataModule.formatPrice(precio);
+                        showToast('Precio actualizado ✓', 'success');
+                    }
+                    if (numpadOverlay) numpadOverlay.classList.remove('active');
+                } else {
+                    if (numpadValue.length < 12) numpadValue += k;
+                }
+                updateNumpadDisplay();
+            });
         });
 
-        document.getElementById('price-save-btn').addEventListener('click', () => {
-            if (!selectedLote) return;
-            const raw = document.getElementById('price-input-field').value.trim();
-            const precio = parseInt(raw, 10);
-            if (!precio || precio <= 0) {
-                showToast('Ingresa un precio válido', 'warning');
-                return;
+        function updateNumpadDisplay() {
+            const val = parseInt(numpadValue, 10) || 0;
+            if (numpadDisplayValue) {
+                numpadDisplayValue.innerHTML = '<span class="currency">$</span> ' + val.toLocaleString('es-CL');
             }
-            DataModule.updateLote(selectedLote.properties.id_lote, { precio: precio });
-            if (typeof SyncModule !== 'undefined') {
-                SyncModule.push(selectedLote.properties.id_lote, { precio: precio });
-            }
-            selectedLote.properties.precio = precio;
-            selectedLote.properties.precio_display = DataModule.formatPrice(precio);
-            document.getElementById('bs-price-value').textContent = DataModule.formatPrice(precio);
-            document.getElementById('price-input-panel').classList.remove('active');
-            showToast('Precio actualizado ✓', 'success');
-        });
-
-        document.getElementById('price-input-field').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') document.getElementById('price-save-btn').click();
-        });
+        }
     }
 
     function locateUser() {
@@ -388,9 +455,11 @@
 
     function searchLote() {
         const val = document.getElementById('search-input').value.trim();
+        const searchId = String(val).replace(/[^0-9]/g, '').replace(/^0+/, '') || '0';
         let found = null;
         lotesLayer.eachLayer(l => {
-            if (String(l.feature.properties.id_lote) === val) found = l;
+            const loteId = String(l.feature.properties.id_lote || l.feature.properties.Lote).replace(/[^0-9]/g, '').replace(/^0+/, '') || '0';
+            if (loteId === searchId) found = l;
         });
         if (found) selectLote(found.feature, found);
         else showToast('Lote no encontrado', 'warning');
@@ -402,6 +471,69 @@
         t.innerHTML = `<i class="fa-solid fa-circle-info"></i> ${msg}`;
         document.getElementById('toast-container').appendChild(t);
         setTimeout(() => t.remove(), 3000);
+    }
+
+    async function pushAllToCloud() {
+        const btn = document.getElementById('header-populate-btn');
+        const originalVal = btn.innerHTML;
+        btn.style.opacity = '0.5';
+        btn.disabled = true;
+
+        const allLotesMap = new Map();
+
+        // ESTRATEGIA REDUNDANTE: App de Gestión
+        const sources = [
+            { data: window.json_Disponibles_2, est: 'Disponible' },
+            { data: window.json_Vendidas_3, est: 'Vendida' },
+            { data: window.json_Reservadas_4, est: 'Reservada' }
+        ];
+
+        sources.forEach(src => {
+            if (src.data && src.data.features) {
+                src.data.features.forEach(f => {
+                    const id = normalizeID(f.properties.id_lote || f.properties.Lote || f.properties.name || f.properties.fid);
+                    if (id && id !== '0') {
+                        allLotesMap.set(id, {
+                            lote: id,
+                            estado: f.properties.estado || f.properties.Estado || src.est,
+                            precio: f.properties.precio || f.properties.Precio || 0
+                        });
+                    }
+                });
+            }
+        });
+
+        const allLotes = Array.from(allLotesMap.values());
+
+        if (!confirm(`¿Deseas poblar el Excel con los ${allLotes.length} lotes detectados?`)) {
+            btn.style.opacity = '1';
+            btn.disabled = false;
+            return;
+        }
+
+        try {
+            const url = 'https://script.google.com/macros/s/AKfycbxK1Fx2zqNrqPmciYgUQ7gOyj66qu6584VWMzfgvoGsjMKTV89ZprBRnjZa5ESb2dYV/exec';
+            await fetch(url, {
+                method: 'POST',
+                mode: 'no-cors',
+                body: JSON.stringify({
+                    action: 'populate',
+                    proyecto: 'El Copihue',
+                    lotes: allLotes
+                })
+            });
+            alert('¡Poblado Maestro Exitoso! ' + allLotes.length + ' lotes enviados al Excel.');
+            if (typeof SyncModule !== 'undefined') SyncModule.sync();
+        } catch (e) {
+            alert('Error: ' + e.message);
+        } finally {
+            btn.style.opacity = '1';
+            btn.disabled = false;
+        }
+    }
+
+    function normalizeID(id) {
+        return String(id || '').replace(/[^0-9]/g, '').replace(/^0+/, '') || '0';
     }
 
     function simulateOnlineStatus() {
