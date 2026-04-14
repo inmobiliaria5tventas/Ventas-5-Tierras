@@ -130,7 +130,7 @@ function doPost(e) {
       const newRow = COLUMNAS.map(col => {
         if (col === 'Lote') return String(lote);
         if (col === 'Estado') return estado || 'Disponible';
-        if (col === 'Precio') return precio || '';
+        if (col === 'Precio') return (precio !== undefined && precio !== null) ? precio : '';
         if (col === 'Area') return data.area || '';
         if (col === 'Modificado_por') return usuario;
         if (col === 'Fecha_modificacion') return now;
@@ -184,7 +184,7 @@ function doPost(e) {
     return jsonResponse({ 
       success: true, 
       message: `Lote ${lote} de ${proyecto} actualizado`,
-      timestamp: now.toISOString()
+      timestamp: now
     });
     
   } catch (err) {

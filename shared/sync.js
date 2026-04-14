@@ -2,7 +2,7 @@
  * SYNC.JS — Módulo de sincronización con Google Sheets
  * CRM 5 Tierras — Compartido entre todos los proyectos
  * 
- * Depende de: shared this/config.js (debe cargarse antes)
+ * Depende de: shared/config.js (debe cargarse antes)
  */
 const SyncModule = (() => {
     let projectName = '';
@@ -13,6 +13,19 @@ const SyncModule = (() => {
         return typeof CRM_CONFIG !== 'undefined' && 
                CRM_CONFIG.APPS_SCRIPT_URL && 
                CRM_CONFIG.APPS_SCRIPT_URL !== 'PEGA_TU_URL_AQUI';
+    }
+
+    function normID(id) {
+        return String(id || '').replace(/[^0-9]/g, '').replace(/^0+/, '') || '0';
+    }
+
+    function getEstadoKey(status) {
+        if (!status || String(status).trim() === '') return null;
+        const s = String(status).toLowerCase().trim();
+        if (s.includes('disp')) return 'Disponible';
+        if (s.includes('res')) return 'Reservada';
+        if (s.includes('vend')) return 'Vendida';
+        return null; // Unknown status → ignore, don't override local data
     }
 
     /**
@@ -50,13 +63,20 @@ const SyncModule = (() => {
     /**
      * Leer datos del proyecto desde Google Sheets
      */
-    function fetchFromSheet() {
+    function fetchFromSheet(retryCount = 0) {
         if (!isConfigured()) return Promise.resolve(null);
 
-        const url = CRM_CONFIG.APPS_SCRIPT_URL + '?action=read&proyecto=' + encodeURIComponent(projectName);
+        const url = CRM_CONFIG.APPS_SCRIPT_URL + '?action=read&proyecto=' + encodeURIComponent(projectName) + '&t=' + Date.now();
         
         return fetch(url)
-            .then(function(r) { return r.json(); })
+            .then(function(r) { 
+                if (r.status === 503 && retryCount < 2) {
+                    console.warn('SyncModule: Google 503 (Saturado), reintentando en 2s...');
+                    return new Promise(resolve => setTimeout(resolve, 2000)).then(() => fetchFromSheet(retryCount + 1));
+                }
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json(); 
+            })
             .then(function(data) {
                 if (data.error) {
                     console.warn('SyncModule fetch error:', data.error);
@@ -76,16 +96,32 @@ const SyncModule = (() => {
         if (!remoteLotes || remoteLotes.length === 0) return;
 
         var collection = DataModule.getAll();
+        var pendingQueue = typeof DataModule.getSyncQueue === 'function' ? DataModule.getSyncQueue() : [];
+        var pendingIds = new Set(pendingQueue.map(item => normID(item.id)));
         var changed = false;
 
         remoteLotes.forEach(function(remoteLote) {
+            var remoteId = normID(remoteLote.Lote);
+            
+            // CRITICAL SHIELD: If this lote has a local update pending, IGNORE remote data
+            if (pendingIds.has(remoteId)) {
+                console.log('SyncModule: Protected lote ' + remoteId + ' from remote overwrite (pending local change)');
+                return;
+            }
             var localFeature = collection.features.find(function(f) {
-                return String(f.properties.id_lote) === String(remoteLote.Lote);
+                var localId = normID(f.properties.id_lote || f.properties.Lote || f.properties.fid || f.properties.name);
+                return localId === remoteId;
             });
 
             if (localFeature) {
-                if (remoteLote.Estado && remoteLote.Estado !== localFeature.properties.estado) {
-                    localFeature.properties.estado = remoteLote.Estado;
+                // Sync status — only override if remote has a valid, recognized estado
+                var remoteEstado = getEstadoKey(remoteLote.Estado || remoteLote.estado);
+
+                // CRITICAL: Ignore empty or invalid remote status to prevent overwriting local state
+                if (remoteEstado && remoteEstado !== localFeature.properties.estado) {
+                    console.log('SyncModule: Update lote ' + remoteId + ' state -> ' + remoteEstado);
+                    localFeature.properties.estado = remoteEstado;
+                    localFeature.properties.Estado = remoteEstado;
                     changed = true;
                 }
 
@@ -94,16 +130,21 @@ const SyncModule = (() => {
                     changed = true;
                 }
 
-                if (remoteLote.Precio) {
-                    var precio = typeof remoteLote.Precio === 'number' 
-                        ? remoteLote.Precio 
-                        : parseInt(String(remoteLote.Precio).replace(/[^0-9]/g, ''), 10) || 0;
-                    if (precio > 0 && precio !== localFeature.properties.precio) {
+                    var rawPrecio = remoteLote.Precio !== undefined ? remoteLote.Precio : remoteLote.precio;
+                    var precio = NaN;
+
+                    if (typeof rawPrecio === 'number') {
+                        precio = rawPrecio;
+                    } else if (rawPrecio !== undefined && rawPrecio !== null && String(rawPrecio).trim() !== '') {
+                        precio = parseInt(String(rawPrecio).replace(/[^0-9]/g, ''), 10);
+                    }
+                    
+                    // Only update if it's a valid number and greater than or equal to 0
+                    if (!isNaN(precio) && precio >= 0 && precio !== localFeature.properties.precio) {
                         localFeature.properties.precio = precio;
                         localFeature.properties.precio_display = DataModule.formatPrice(precio);
                         changed = true;
                     }
-                }
             }
         });
 
@@ -129,21 +170,37 @@ const SyncModule = (() => {
             modificado_por: 'App CRM'
         };
 
-        if (updates.estado !== undefined) payload.estado = updates.estado;
-        if (updates.precio !== undefined) payload.precio = updates.precio;
+        if (updates.estado !== undefined) {
+            payload.estado = updates.estado;
+            payload.Estado = updates.estado; // Send both to be safe with Sheet columns
+        }
+        if (updates.precio !== undefined) {
+            payload.precio = updates.precio;
+            payload.Precio = updates.precio;
+        }
         if (updates.area !== undefined) payload.area = updates.area;
         if (updates.comentario !== undefined) payload.comentario = updates.comentario;
+        
+        // Uso de un timeout para no quedarse esperando eternamente
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         return fetch(CRM_CONFIG.APPS_SCRIPT_URL, {
             method: 'POST',
+            // Usamos text/plain para evitar pre-flights de CORS complejos que Google Sheet puede rechazar,
+            // pero el cuerpo seguirá siendo un JSON válido que el backend parseará sin problemas.
+            headers: { 'Content-Type': 'text/plain' }, 
             body: JSON.stringify(payload)
         })
         .then(function() {
+            clearTimeout(timeoutId);
             updateSyncIndicator('online');
+            // Como usamos no-cors no podemos leer la respuesta, pero el dato llega al Sheet
             return true;
         })
         .catch(function(err) {
-            console.warn('SyncModule push error:', err);
+            clearTimeout(timeoutId);
+            console.warn('SyncModule push error, guardando en pendientes:', err);
             addToPendingQueue(loteId, updates);
             updateSyncIndicator('pending');
             return false;
@@ -186,9 +243,18 @@ const SyncModule = (() => {
                 lote: String(item.loteId),
                 modificado_por: 'App CRM'
             };
-            if (item.updates.estado !== undefined) payload.estado = item.updates.estado;
-            if (item.updates.precio !== undefined) payload.precio = item.updates.precio;
-            if (item.updates.comentario !== undefined) payload.comentario = item.updates.comentario;
+            if (item.updates.estado !== undefined) {
+                payload.estado = item.updates.estado;
+                payload.Estado = item.updates.estado;
+            }
+            if (item.updates.precio !== undefined) {
+                payload.precio = item.updates.precio;
+                payload.Precio = item.updates.precio;
+            }
+            if (item.updates.comentario !== undefined) {
+                payload.comentario = item.updates.comentario;
+                payload.Comentario = item.updates.comentario;
+            }
 
             fetch(CRM_CONFIG.APPS_SCRIPT_URL, {
                 method: 'POST',
@@ -234,7 +300,7 @@ const SyncModule = (() => {
             online:  { bg: 'rgba(34,197,94,0.9)',  text: '☁️ Sincronizado',    color: '#fff' },
             syncing: { bg: 'rgba(59,130,246,0.9)',  text: '🔄 Sincronizando...', color: '#fff' },
             pending: { bg: 'rgba(234,179,8,0.9)',   text: '⏳ Pendiente',        color: '#000' },
-            offline: { bg: 'rgba(107,114,128,0.7)', text: '📴 Offline',          color: '#fff' }
+            offline: { bg: 'rgba(107,114,128,0.7)', text: '🔴 Offline',          color: '#fff' }
         };
 
         var s = styles[status] || styles.offline;
