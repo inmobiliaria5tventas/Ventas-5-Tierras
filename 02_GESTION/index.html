@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geoportal de Ventas - Administración</title>
+
+    <!-- PWA / Mobile Meta -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="../04_RECURSOS/5t.jfif">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="App Gestión">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0f172a">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <link rel="stylesheet" href="index.css">
+</head>
+
+<body>
+    <div class="menu-toggle" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="brand">
+            <div class="brand-container">
+                <img src="../04_RECURSOS/5t.jfif" alt="5T Logo" class="brand-logo">
+                <span>5 TIERRAS</span>
+            </div>
+            <div class="brand-tag">Gis CRM Portal</div>
+        </div>
+
+        <div class="project-selector">
+            <div class="project-section-title">Nuestros Proyectos</div>
+            
+            <!-- EL COPIHUE -->
+            <div class="project-card" onclick="window.location.href='hacienda_copihue/app/index.html'">
+                <img src="../04_RECURSOS/Logos/El Copihue.png" alt="El Copihue">
+                <div class="project-info">
+                    <span class="project-name">Hacienda El Copihue</span>
+                </div>
+            </div>
+
+            <!-- LAS BRISAS -->
+            <div class="project-card" onclick="window.location.href='las_brisas/app/index.html'">
+                <img src="../04_RECURSOS/Logos/Las Brisas.png" alt="Las Brisas">
+                <div class="project-info">
+                    <span class="project-name">Las Brisas</span>
+                </div>
+            </div>
+
+            <!-- LOS ENCINOS -->
+            <div class="project-card" onclick="window.location.href='hacienda_encinos/app/index.html'">
+                <img src="../04_RECURSOS/Logos/Los Encinos.png" alt="Los Encinos">
+                <div class="project-info">
+                    <span class="project-name">Hacienda Los Encinos</span>
+                </div>
+            </div>
+
+            <!-- LOS NARANJOS -->
+            <div class="project-card" onclick="window.location.href='fundo_naranjos/app/index.html'">
+                <img src="../04_RECURSOS/Logos/Los Naranjos.png" alt="Los Naranjos">
+                <div class="project-info">
+                    <span class="project-name">Los Naranjos</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Inicializar Mapa
+        var map = L.map('map', { zoomControl: false }).setView([-36.3, -71.9], 9);
+        L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+            maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'], attribution: 'Google'
+        }).addTo(map);
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        var projectIcon = L.divIcon({
+            className: 'custom-div-icon',
+            html: "<div class='marker-pin'></div>",
+            iconSize: [30, 42],
+            iconAnchor: [15, 42]
+        });
+
+        const projects = [
+            {
+                name: "Hacienda El Copihue",
+                subtitle: "Administración - El Copihue",
+                pos: [-36.120, -71.776], path: "hacienda_copihue/app/index.html", logo: "../04_RECURSOS/Logos/El Copihue.png"
+            },
+            {
+                name: "Las Brisas",
+                subtitle: "Administración - Las Brisas",
+                pos: [-36.385, -71.953], path: "las_brisas/app/index.html", logo: "../04_RECURSOS/Logos/Las Brisas.png"
+            },
+            {
+                name: "Hacienda Los Encinos",
+                subtitle: "Administración - Los Encinos",
+                pos: [-36.468, -71.842], path: "hacienda_encinos/app/index.html", logo: "../04_RECURSOS/Logos/Los Encinos.png"
+            },
+            {
+                name: "Los Naranjos",
+                subtitle: "Administración - Los Naranjos",
+                pos: [-36.478, -71.838], path: "fundo_naranjos/app/index.html", logo: "../04_RECURSOS/Logos/Los Naranjos.png"
+            }
+        ];
+
+        async function loadAll() {
+            let bounds = L.latLngBounds();
+            const isMobile = window.innerWidth <= 1024;
+            
+            projects.forEach(p => {
+                bounds.extend(p.pos);
+                let customIcon = L.icon({
+                    iconUrl: p.logo,
+                    iconSize: [45, 45],
+                    iconAnchor: [22, 45],
+                    popupAnchor: [0, -40]
+                });
+                
+                const zOffset = p.name.includes("Encinos") ? 1000 : 0;
+                
+                p.marker = L.marker(p.pos, { 
+                    icon: customIcon, 
+                    zIndexOffset: zOffset,
+                    riseOnHover: true 
+                }).addTo(map)
+                .on('click', () => window.location.href = p.path);
+            });
+
+            if (bounds.isValid()) {
+                map.fitBounds(bounds, { padding: isMobile ? [20, 20] : [50, 50] });
+            }
+
+            function updateMarkerPositions() {
+                const currentZoom = map.getZoom();
+                const isFar = currentZoom < 13;
+
+                projects.forEach(p => {
+                    if (p.name.includes("Encinos")) {
+                        const targetPos = isFar ? [-36.455, -71.865] : p.pos;
+                        p.marker.setLatLng(targetPos);
+                    }
+                    if (p.name.includes("Naranjos")) {
+                        const targetPos = isFar ? [-36.495, -71.815] : p.pos;
+                        p.marker.setLatLng(targetPos);
+                    }
+                });
+            }
+
+            map.on('zoomend', updateMarkerPositions);
+            updateMarkerPositions();
+        }
+
+        loadAll();
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+
+        function zoomToProject(pos) {
+            map.flyTo(pos, 16, { duration: 2 });
+            if (window.innerWidth <= 1024) toggleSidebar();
+        }
+    </script>
+</body>
+
+</html>

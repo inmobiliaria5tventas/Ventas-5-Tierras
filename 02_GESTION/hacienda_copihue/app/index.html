@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>El Copihue - Gestión de Lotes</title>
+    
+    <!-- PWA / Mobile Meta -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="../../../04_RECURSOS/logo5t.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="App Ventas">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1e293b">
+    <script>const DATA_VERSION = 'v36_geometry_final_rebuild';</script>
+
+    <!-- Leaflet & UI Libs -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+            --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); height: 100vh; height: 100dvh; overflow: hidden; margin: 0; padding: 0; }
+        #map { width: 100%; height: 100%; height: 100dvh; background: #000; z-index: 1; position: absolute; top: 0; left: 0; }
+
+        .app-header {
+            position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+            padding: 15px; background: linear-gradient(to bottom, rgba(15,23,42,0.9), transparent);
+            pointer-events: none;
+        }
+        .header-content { display: flex; align-items: center; justify-content: space-between; pointer-events: auto; }
+        .back-btn { background: var(--surface); width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: white; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+
+        /* Tools Row - Responsive Layout */
+        .header-tools {
+            display: flex; gap: 8px; align-items: center;
+        }
+        .header-right { 
+            display: flex; align-items: center; gap: 10px;
+            pointer-events: auto;
+        }
+
+        .stats-bar {
+            position: absolute; bottom: 20px; left: 50%; z-index: 10;
+            background: var(--surface); border-radius: 20px; padding: 15px;
+            display: flex; justify-content: space-around; border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: min(calc(100% - 30px), 500px); transform: translateX(-50%);
+        }
+        .stats-bar.hidden { transform: translateX(-50%) translateY(150%); }
+
+        /* FAB Button */
+        .fab {
+            position: absolute; right: 15px; bottom: 100px; z-index: 10;
+            width: 50px; height: 50px; border-radius: 15px; background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 20px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: 0.2s;
+        }
+        .fab:active { transform: scale(0.9); }
+        .fab--locate.locating { color: var(--primary); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        /* GPS Marker */
+        .gps-marker { display: flex; align-items: center; justify-content: center; }
+        .gps-marker__pulse { position: absolute; width: 40px; height: 40px; background: rgba(59, 130, 246, 0.4); border-radius: 50%; animation: gpsPulse 2s infinite; }
+        .gps-marker__dot { width: 14px; height: 14px; background: #fff; border: 3px solid var(--primary); border-radius: 50%; z-index: 2; }
+        @keyframes gpsPulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+
+        .stat-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .stat-val { font-size: 18px; font-weight: 800; }
+        .stat-label { font-size: 10px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.5px; }
+        .stat-val--disp { color: var(--success); }
+        .stat-val--res { color: var(--warning); }
+        .stat-val--vend { color: var(--danger); }
+        /* BottomSheet Premium */
+        .bottomsheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; opacity: 0; pointer-events: none; transition: 0.3s; }
+        .bottomsheet-overlay.active { opacity: 1; pointer-events: auto; }
+        
+        .bottomsheet {
+            position: absolute; bottom: 15px; left: 50%; z-index: 101;
+            width: min(calc(100% - 30px), 500px);
+            background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 14, 26, 0.99) 100%);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border-radius: 28px; padding: 20px;
+            transform: translateX(-50%) translateY(120%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            color: white;
+        }
+        .bottomsheet.active { transform: translateX(-50%) translateY(0); }
+        .bs-handle { width: 40px; height: 4px; background: rgba(255,255,255,0.2); border-radius: 2px; margin: 0 auto 15px; }
+        
+        .bottomsheet__header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; }
+        .bottomsheet__title { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+        .bottomsheet__area { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+        .bottomsheet__close { background: rgba(255,255,255,0.1); border: none; color: white; width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        
+        .bottomsheet__current-status {
+            display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 20px;
+        }
+        .bottomsheet__current-status--disponible { background: rgba(34,197,94,0.1); color: #22c55e; }
+        .bottomsheet__current-status--reservada { background: rgba(234,179,8,0.1); color: #eab308; }
+        .bottomsheet__current-status--vendida { background: rgba(239,68,68,0.1); color: #ef4444; }
+
+        .status-buttons { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .status-btn { 
+            display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 10px; border-radius: 12px; border: 2px solid transparent; background: rgba(255,255,255,0.05); color: var(--text-dim); transition: 0.3s; cursor: pointer;
+        }
+        .status-btn__icon { font-size: 18px; }
+        .status-btn__label { font-size: 11px; font-weight: 600; }
+        .status-btn.active { background: rgba(255,255,255,0.1); border-color: currentColor; color: white; opacity: 1; }
+        .status-btn--disponible.active { color: #22c55e; border-color: #22c55e; }
+        .status-btn--reservada.active { color: #eab308; border-color: #eab308; }
+        .status-btn--vendida.active { color: #ef4444; border-color: #ef4444; }
+
+        .detail-row { display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(255,255,255,0.03); border-radius: 16px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.05); }
+        .detail-row__icon { font-size: 20px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 12px; }
+        .detail-row__label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .detail-row__value { font-size: 16px; font-weight: 700; color: white; }
+        
+        .bs-last-modified { font-size: 10px; color: var(--text-dim); text-align: center; margin-top: 15px; font-style: italic; }
+        .bs-vendida-info { background: rgba(239,68,68,0.1); border: 1px dashed #ef4444; padding: 15px; border-radius: 14px; color: #ef4444; font-size: 13px; text-align: center; display: none; }
+        .toast-container { position: fixed; top: 110px; left: 50%; transform: translateX(-50%); z-index: 1000; display: flex; flex-direction: column; gap: 10px; width: 80%; max-width: 300px; pointer-events: none; }
+        .toast { background: var(--surface); color: white; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); animation: toastIn 0.3s ease-out; display: flex; align-items: center; gap: 10px; }
+        @keyframes toastIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        /* Comment Section */
+        .comment-btn {
+            width: 100%; display: flex; align-items: center; gap: 10px; padding: 13px 15px;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px; color: var(--text-dim); cursor: pointer;
+            font-family: inherit; font-size: 13px; font-weight: 600;
+            transition: background 0.2s, color 0.2s; text-align: left; margin-bottom: 10px;
+        }
+        .comment-btn:active { background: rgba(255,255,255,0.09); }
+        .comment-btn .comment-btn__icon { font-size: 16px; }
+        .comment-btn .comment-btn__preview {
+            flex: 1; overflow: hidden; white-space: nowrap;
+            text-overflow: ellipsis; font-weight: 400; font-style: italic;
+        }
+        .comment-btn .comment-btn__preview.has-comment { color: #93c5fd; font-style: normal; }
+        .comment-btn .comment-btn__chevron { margin-left: auto; transition: transform 0.25s; }
+        .comment-btn.open .comment-btn__chevron { transform: rotate(180deg); }
+
+        .comment-panel {
+            overflow: hidden; max-height: 0;
+            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s;
+            opacity: 0;
+        }
+        .comment-panel.open { max-height: 200px; opacity: 1; }
+
+        .comment-textarea {
+            width: 100%; min-height: 80px; resize: none;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px; padding: 12px 14px; color: white;
+            font-family: inherit; font-size: 14px; line-height: 1.5;
+            outline: none; box-sizing: border-box; margin-bottom: 10px;
+        }
+        .comment-textarea:focus { border-color: var(--primary); }
+        .comment-textarea::placeholder { color: var(--text-dim); }
+
+        .comment-save-btn {
+            width: 100%; padding: 13px; background: var(--primary);
+            border: none; border-radius: 14px; color: white;
+            font-family: inherit; font-size: 14px; font-weight: 700;
+            cursor: pointer; transition: background 0.2s, transform 0.1s;
+        }
+        .comment-save-btn:active { transform: scale(0.97); background: var(--primary-dark); }
+
+        .comment-btn__delete {
+            background: rgba(239,68,68,0.12); border: none; color: #ef4444;
+            width: 28px; height: 28px; border-radius: 8px; display: none;
+            align-items: center; justify-content: center; font-size: 14px;
+            cursor: pointer; flex-shrink: 0; transition: background 0.2s;
+        }
+        .comment-btn__delete:active { background: rgba(239,68,68,0.28); }
+        .comment-btn__delete.visible { display: flex; }
+
+        /* Price Row */
+        .price-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 16px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
+        .price-row:hover { background: rgba(255,255,255,0.1); }
+        .price-row__content { flex: 1; }
+        .price-row__label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        .price-row__value { font-size: 16px; font-weight: 700; color: white; }
+        .price-row__icon { font-size: 20px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 12px; }
+        .price-row__edit-icon { font-size: 18px; opacity: 0.7; }
+
+        /* Numpad Overlay */
+        .numpad-overlay { position: fixed; inset: 0; z-index: 2000; background: rgba(10, 14, 26, 0.97); backdrop-filter: blur(20px); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .numpad-overlay.active { opacity: 1; pointer-events: auto; }
+        .numpad__header { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 320px; margin-bottom: 30px; padding: 0 10px; }
+        .numpad__title { font-size: 18px; font-weight: 700; color: white; }
+        .numpad__cancel { background: none; border: none; color: var(--primary); font-size: 15px; font-weight: 600; cursor: pointer; }
+        .numpad__display { text-align: center; margin-bottom: 30px; }
+        .numpad__display-label { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .numpad__display-value { font-family: inherit; font-size: 36px; font-weight: 800; color: white; }
+        .numpad__display-value .currency { color: var(--success); }
+        .numpad__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 280px; width: 100%; }
+        .numpad__key { width: 100%; height: 60px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.05); color: white; font-family: inherit; font-size: 24px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+        .numpad__key:active { transform: scale(0.92); background: rgba(255,255,255,0.12); }
+        .numpad__key--back { color: var(--danger); font-size: 20px; }
+        .numpad__key--confirm { background: linear-gradient(135deg, var(--success), #16a34a); border-color: var(--success); font-size: 28px; }
+
+        .lote-label { background: transparent !important; border: none !important; box-shadow: none !important; color: white !important; font-weight: 800 !important; text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,1) !important; pointer-events: none !important; }
+        .map-low-zoom .lote-label { display: none !important; }
+
+        .loading-screen { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.6s ease, visibility 0.6s; }
+        .loading-screen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+        .loading-logo { height: 80px; margin-bottom: 30px; filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.2)); }
+        .loading-bar { width: 200px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+        .loading-bar-inner { width: 0%; height: 100%; background: var(--primary); transition: width 0.4s ease; }
+
+        /* Sync Indicator - Moved to avoid overlap */
+        /* Sync Indicator - Grouped with tools */
+        .sync-indicator { 
+            position: absolute; 
+            top: 15px; 
+            right: 15px; 
+            z-index: 1000; 
+            width: 28px; 
+            height: 28px; 
+            background: rgba(30, 41, 59, 0.6); 
+            backdrop-filter: blur(8px);
+            border-radius: 8px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border: 1px solid rgba(255,255,255,0.08); 
+            font-size: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2); 
+        }
+        .sync-indicator--syncing { color: var(--primary); animation: spin 2s linear infinite; }
+        .sync-indicator--online { color: var(--success); }
+        .sync-indicator--offline { color: var(--danger); }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* Public Portal Link */
+        .public-link { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); padding: 5px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 6px; transition: 0.2s; pointer-events: auto; }
+        .public-link:hover { background: rgba(34, 197, 94, 0.2); }
+
+        /* GPS Marker Styles */
+        .gps-marker { display: flex; align-items: center; justify-content: center; }
+        .gps-marker__dot { width: 14px; height: 14px; background: #3b82f6; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); z-index: 2; }
+        .gps-marker__pulse { position: absolute; width: 35px; height: 35px; background: rgba(59, 130, 246, 0.3); border-radius: 50%; animation: gpsPulse 2s infinite; z-index: 1; }
+        @keyframes gpsPulse { 0% { transform: scale(0.5); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+
+        /* Estilo para el botón de copiado */
+        .copy-link-btn {
+            background: rgba(129, 140, 248, 0.15); color: #818cf8; border: 1px solid rgba(129, 140, 248, 0.3);
+            padding: 6px 10px; border-radius: 10px; font-size: 11px; font-weight: 700;
+            display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.2s;
+        }
+        .copy-link-btn:active { transform: scale(0.95); background: rgba(129, 140, 248, 0.3); }
+
+        /* Ajuste del indicador de sincronización para que no use fixed si ya está en el header */
+        #sync-indicator { 
+            position: relative !important; top: auto !important; right: auto !important; 
+            padding: 6px 12px; border-radius: 10px; font-size: 10px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen">
+        <img src="../../../04_RECURSOS/Logos/El Copihue.png" class="loading-logo" alt="Logo">
+        <div class="loading-bar"><div class="loading-bar-inner"></div></div>
+    </div>    <header class="app-header">
+        <div class="header-content">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <a href="../../index.html" class="back-btn" style="width: 36px; height: 36px; border-radius: 10px;"><i class="fa-solid fa-chevron-left"></i></a>
+                <div style="display: flex; flex-direction: column;">
+                    <div style="font-size: 8px; color: var(--text-dim); font-weight: 700; letter-spacing: 0.5px;">GESTIÓN</div>
+                    <div style="font-size: 14px; font-weight: 800; color: #fff;">El Copihue</div>
+                </div>
+            </div>
+            
+            <div class="header-right">
+                <div id="sync-indicator" class="sync-indicator"></div>
+                <button id="copy-link-btn" class="copy-link-btn" title="Copiar link de clientes">
+                    <i class="fa-solid fa-copy"></i> Link
+                </button>
+                <a href="../../../01_CLIENTES/hacienda_copihue/app/index.html" target="_blank" class="public-link" style="padding: 6px 12px; font-size: 11px; border-radius: 10px; background: rgba(34, 197, 94, 0.2);">
+                    <i class="fa-solid fa-external-link"></i> Público
+                </a>
+                <button id="header-populate-btn" class="back-btn" title="Subir datos al Excel" style="width: 38px; height: 38px; border-radius: 12px; font-size: 16px; color: #818cf8; background: var(--surface);">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+    <div id="map"></div>
+
+    <div class="stats-bar">
+        <div class="stat-item">
+            <div id="stat-disponible" class="stat-val stat-val--disp">0</div>
+            <div class="stat-label">Libres</div>
+        </div>
+        <div class="stat-item">
+            <div id="stat-reservada" class="stat-val stat-val--res">0</div>
+            <div class="stat-label">Reserva</div>
+        </div>
+        <div class="stat-item">
+            <div id="stat-vendida" class="stat-val stat-val--vend">0</div>
+            <div class="stat-label">Vendido</div>
+        </div>
+    </div>
+
+    <div id="bottomsheet-overlay" class="bottomsheet-overlay"></div>
+    <div id="bottomsheet" class="bottomsheet">
+        <div class="bs-handle"></div>
+        <div class="bottomsheet__header">
+            <div>
+                <div id="bs-lote-id" class="bottomsheet__title">Lote --</div>
+                <div id="bs-lote-area" class="bottomsheet__area">-- m²</div>
+            </div>
+            <button id="bs-close" class="bottomsheet__close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <div id="bs-current-status" class="bottomsheet__current-status">
+            <span>●</span> --
+        </div>
+
+        <div class="status-buttons">
+            <button class="status-btn status-btn--disponible" data-estado="Disponible">
+                <span class="status-btn__icon">🟢</span>
+                <span class="status-btn__label">Disponible</span>
+            </button>
+            <button class="status-btn status-btn--reservada" data-estado="Reservada">
+                <span class="status-btn__icon">🟡</span>
+                <span class="status-btn__label">Reservada</span>
+            </button>
+            <button class="status-btn status-btn--vendida" data-estado="Vendida">
+                <span class="status-btn__icon">🔴</span>
+                <span class="status-btn__label">Vendida</span>
+            </button>
+        </div>
+
+        <div id="price-row" class="price-row">
+            <span class="price-row__icon">💰</span>
+            <div class="price-row__content">
+                <div class="price-row__label">Precio</div>
+                <div id="bs-price-value" class="price-row__value">$ --</div>
+            </div>
+            <span class="price-row__edit-icon">✏️</span>
+        </div>
+
+        <!-- Comment Section -->
+        <button id="comment-toggle-btn" class="comment-btn">
+            <span class="comment-btn__icon">💬</span>
+            <span id="comment-btn-preview" class="comment-btn__preview">Agregar comentario...</span>
+            <button id="comment-delete-btn" class="comment-btn__delete" title="Borrar comentario">🗑️</button>
+            <i class="fa-solid fa-chevron-down comment-btn__chevron"></i>
+        </button>
+        <div id="comment-panel" class="comment-panel">
+            <textarea id="comment-textarea" class="comment-textarea" placeholder="Escribe un comentario breve sobre este lote..."></textarea>
+            <button id="comment-save-btn" class="comment-save-btn"><i class="fa-solid fa-floppy-disk"></i> Guardar comentario</button>
+        </div>
+
+        <div id="bs-vendida-info" class="bs-vendida-info">
+            🔒 Lote vendido — bloqueado para edición
+        </div>
+
+        <div id="bs-last-modified" class="bs-last-modified">
+            Última actualización: --
+        </div>
+    </div>
+
+    <!-- Numpad Overlay -->
+    <div id="numpad-overlay" class="numpad-overlay">
+        <div class="numpad__header">
+            <div class="numpad__title">💰 Editar Precio</div>
+            <button id="numpad-cancel" class="numpad__cancel">Cancelar</button>
+        </div>
+        <div class="numpad__display">
+            <div class="numpad__display-label">Nuevo Precio</div>
+            <div id="numpad-display-value" class="numpad__display-value">
+                <span class="currency">$</span> 0
+            </div>
+        </div>
+        <div class="numpad__grid">
+            <button class="numpad__key" data-key="1">1</button>
+            <button class="numpad__key" data-key="2">2</button>
+            <button class="numpad__key" data-key="3">3</button>
+            <button class="numpad__key" data-key="4">4</button>
+            <button class="numpad__key" data-key="5">5</button>
+            <button class="numpad__key" data-key="6">6</button>
+            <button class="numpad__key" data-key="7">7</button>
+            <button class="numpad__key" data-key="8">8</button>
+            <button class="numpad__key" data-key="9">9</button>
+            <button class="numpad__key numpad__key--back" data-key="back">⌫</button>
+            <button class="numpad__key" data-key="0">0</button>
+            <button class="numpad__key numpad__key--confirm" data-key="confirm">✓</button>
+        </div>
+    </div>
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- GeoJSON Data Sources -->
+    <!-- Unified Map Data Source -->
+    <script src="../../../03_CORAZON/layers/copihue_master.js?v=36"></script>
+
+    
+    <!-- App Logic -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Shared Sync Module -->
+    <script src="../../../03_CORAZON/config.js"></script>
+    <script src="../../../03_CORAZON/sync.js"></script>
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
