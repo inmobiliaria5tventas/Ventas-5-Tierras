@@ -65,9 +65,9 @@
 
         /* FAB Button */
         .fab {
-            position: absolute; right: 15px; bottom: 100px; z-index: 10;
-            width: 50px; height: 50px; border-radius: 15px; background: var(--surface);
-            border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 20px;
+            position: absolute; right: 15px; bottom: 130px; z-index: 10;
+            width: 40px; height: 40px; border-radius: 12px; background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 16px;
             display: flex; align-items: center; justify-content: center;
             box-shadow: 0 4px 15px rgba(0,0,0,0.4); transition: 0.2s;
         }
@@ -248,9 +248,7 @@
         .sync-indicator--offline { color: var(--danger); }
         @keyframes spin { 100% { transform: rotate(360deg); } }
 
-        /* Public Portal Link */
-        .public-link { background: rgba(34, 197, 94, 0.15); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.2); padding: 5px 10px; border-radius: 8px; font-size: 10px; font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: 6px; transition: 0.2s; pointer-events: auto; }
-        .public-link:hover { background: rgba(34, 197, 94, 0.2); }
+        /* Public Portal Link Removed */
 
         /* GPS Marker Styles */
         .gps-marker { display: flex; align-items: center; justify-content: center; }
@@ -269,7 +267,7 @@
         /* Ajuste del indicador de sincronización para que no use fixed si ya está en el header */
         #sync-indicator { 
             position: relative !important; top: auto !important; right: auto !important; 
-            padding: 6px 12px; border-radius: 10px; font-size: 10px;
+            padding: 4px 8px; border-radius: 10px; font-size: 12px;
             white-space: nowrap;
         }
     </style>
@@ -293,9 +291,7 @@
                 <button id="copy-link-btn" class="copy-link-btn" title="Copiar link de clientes">
                     <i class="fa-solid fa-copy"></i> Link
                 </button>
-                <a href="../../../01_CLIENTES/hacienda_copihue/app/index.html" target="_blank" class="public-link" style="padding: 6px 12px; font-size: 11px; border-radius: 10px; background: rgba(34, 197, 94, 0.2);">
-                    <i class="fa-solid fa-external-link"></i> Público
-                </a>
+
                 <button id="header-populate-btn" class="back-btn" title="Subir datos al Excel" style="width: 38px; height: 38px; border-radius: 12px; font-size: 16px; color: #818cf8; background: var(--surface);">
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                 </button>
@@ -315,7 +311,7 @@
         </div>
         <div class="stat-item">
             <div id="stat-vendida" class="stat-val stat-val--vend">0</div>
-            <div class="stat-label">Vendido</div>
+            <div class="stat-label">Vendidos</div>
         </div>
     </div>
 

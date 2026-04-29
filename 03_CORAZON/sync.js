@@ -302,10 +302,10 @@ const SyncModule = (() => {
         }
 
         var styles = {
-            online:  { bg: 'rgba(34,197,94,0.9)',  text: '☁️ Sincronizado',    color: '#fff' },
-            syncing: { bg: 'rgba(59,130,246,0.9)',  text: '🔄 Sincronizando...', color: '#fff' },
-            pending: { bg: 'rgba(234,179,8,0.9)',   text: '⏳ Pendiente',        color: '#000' },
-            offline: { bg: 'rgba(107,114,128,0.7)', text: '🔴 Offline',          color: '#fff' }
+            online:  { bg: 'rgba(34,197,94,0.9)',  text: '☁️',    color: '#fff' },
+            syncing: { bg: 'rgba(59,130,246,0.9)',  text: '🔄', color: '#fff' },
+            pending: { bg: 'rgba(234,179,8,0.9)',   text: '⏳',        color: '#000' },
+            offline: { bg: 'rgba(107,114,128,0.7)', text: '🔴',          color: '#fff' }
         };
 
         var s = styles[status] || styles.offline;
