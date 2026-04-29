@@ -315,15 +315,12 @@
         const copyBtn = document.getElementById('copy-link-btn');
         if (copyBtn) {
             copyBtn.addEventListener('click', () => {
-                const publicLink = document.querySelector('.public-link');
-                if (publicLink) {
-                    const url = publicLink.href;
-                    navigator.clipboard.writeText(url).then(() => {
-                        showToast('✓ Link copiado al portapapeles', 'success');
-                    }).catch(err => {
-                        console.error('Error al copiar:', err);
-                    });
-                }
+                const url = new URL('../../../01_CLIENTES/hacienda_encinos/app/index.html', window.location.href).href;
+                navigator.clipboard.writeText(url).then(() => {
+                    showToast('✓ Link copiado al portapapeles', 'success');
+                }).catch(err => {
+                    console.error('Error al copiar:', err);
+                });
             });
         }
 
