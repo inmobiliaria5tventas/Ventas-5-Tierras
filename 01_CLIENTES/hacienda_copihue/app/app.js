@@ -195,7 +195,6 @@
         document.getElementById('bottomsheet').classList.remove('active');
         document.getElementById('bottomsheet-overlay').classList.remove('active');
         document.querySelector('.stats-bar').classList.remove('hidden');
-        document.getElementById('nav-options').classList.remove('active'); // Reset nav options
         if (highlightedLayer) {
             const colors = ESTADO_COLORS[highlightedLayer.feature.properties.estado] || ESTADO_COLORS['Disponible'];
             highlightedLayer.setStyle({ weight: 1.5, fillOpacity: colors.opacity, color: colors.stroke });
@@ -213,13 +212,6 @@
     function setupEventListeners() {
         document.getElementById('bs-close').addEventListener('click', closeBottomSheet);
         document.getElementById('bottomsheet-overlay').addEventListener('click', closeBottomSheet);
-        
-        const navMain = document.getElementById('btn-nav-main');
-        if (navMain) {
-            navMain.addEventListener('click', () => {
-                document.getElementById('nav-options').classList.toggle('active');
-            });
-        }
         
         const locateBtn = document.getElementById('fab-locate');
         if (locateBtn) locateBtn.addEventListener('click', locateUser);

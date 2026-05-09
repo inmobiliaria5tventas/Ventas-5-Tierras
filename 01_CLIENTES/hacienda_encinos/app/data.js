@@ -78,9 +78,6 @@ const DataModule = (() => {
             const estado = findProp(f.properties, MAPPING.estado) || defaultEstado;
             let precio = sanitizeNumber(findProp(f.properties, MAPPING.precio) || 33000000);
 
-            // Regla de Negocio: Vendido = $ 0 (Robust check)
-            if (String(estado).toLowerCase().includes('vend')) precio = 0;
-
             lotesData.features.push({
                 type: "Feature",
                 geometry: f.geometry,

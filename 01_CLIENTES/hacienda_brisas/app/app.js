@@ -166,7 +166,7 @@
         document.getElementById('bs-lote-id').textContent = `Lote ${props.id_lote || props.Lote}`;
         document.getElementById('bs-lote-area').textContent = props.area || '5.000 m²';
         
-        const finalPrice = isVendida ? 0 : props.precio;
+        const finalPrice = props.precio || props.Precio || 0;
         document.getElementById('bs-price-value').textContent = DataModule.formatPrice(finalPrice);
         
         const badge = document.getElementById('bs-current-status');
@@ -212,14 +212,6 @@
     function setupEventListeners() {
         document.getElementById('bs-close').addEventListener('click', closeBottomSheet);
         document.getElementById('bottomsheet-overlay').addEventListener('click', closeBottomSheet);
-        
-        const navMain = document.getElementById('btn-nav-main');
-        if (navMain) {
-            navMain.addEventListener('click', () => {
-                const opts = document.getElementById('nav-options');
-                if (opts) opts.classList.toggle('active');
-            });
-        }
         
         const locateBtn = document.getElementById('fab-locate');
         if (locateBtn) locateBtn.addEventListener('click', locateUser);
