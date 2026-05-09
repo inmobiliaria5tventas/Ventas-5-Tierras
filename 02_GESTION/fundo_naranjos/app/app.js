@@ -169,7 +169,7 @@
         document.getElementById('bs-lote-area').textContent = props.area;
         
         const displayPrice = (props.precio !== undefined && props.precio !== null) ? DataModule.formatPrice(props.precio) : DataModule.formatPrice(33000000);
-        const finalPriceDisplay = isVendida ? DataModule.formatPrice(0) : (props.precio_display || displayPrice);
+        const finalPriceDisplay = props.precio_display || displayPrice;
         document.getElementById('bs-price-value').textContent = finalPriceDisplay;
         
         const badge = document.getElementById('bs-current-status');
@@ -257,9 +257,7 @@
 
         const updates = { estado: newEstado };
         if (newEstado === 'Vendida') {
-            updates.precio = 0;
-            selectedLote.properties.precio = 0;
-            selectedLote.properties.precio_display = DataModule.formatPrice(0);
+            // Keep price
         }
         DataModule.updateLote(loteId, updates);
 
@@ -291,56 +289,98 @@
         const dispEl = document.getElementById('stat-disponible');
         const resEl = document.getElementById('stat-reservada');
         const vendEl = document.getElementById('stat-vendida');
+        const totalEl = document.getElementById('stats-total');
         
+        const total = (stats.disponible || 0) + (stats.reservada || 0) + (stats.vendida || 0);
         if (dispEl) dispEl.textContent = stats.disponible;
         if (resEl) resEl.textContent = stats.reservada;
         if (vendEl) vendEl.textContent = stats.vendida;
+        if (totalEl) totalEl.textContent = total;
+
+        // Progress Bars Logic
+        const setBar = (id, val) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const percent = total > 0 ? (val / total) * 100 : 0;
+            el.style.width = percent + '%';
+        };
+
+        setBar('bar-disp', stats.disponible);
+        setBar('bar-res', stats.reservada);
+        setBar('bar-vend', stats.vendida);
     }
 
     function setupEventListeners() {
-        document.getElementById('bs-close').addEventListener('click', closeBottomSheet);
-        document.getElementById('bottomsheet-overlay').addEventListener('click', closeBottomSheet);
-        document.querySelectorAll('.status-btn').forEach(btn => {
-            btn.addEventListener('click', () => changeStatus(btn.dataset.estado));
-        });
-        // document.getElementById('search-btn').addEventListener('click', searchLote);
-        // document.getElementById('search-input').addEventListener('keypress', (e) => {
-        //     if (e.key === 'Enter') searchLote();
-        // });
-        const locateBtn = document.getElementById('fab-locate');
-        if (locateBtn) locateBtn.addEventListener('click', locateUser);
+        const safeAdd = (id, event, callback) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, callback);
+        };
 
-        // Lógica para el botón de copiar link
-        const copyBtn = document.getElementById('copy-link-btn');
-        if (copyBtn) {
-            copyBtn.addEventListener('click', () => {
-                const url = new URL('../../../01_CLIENTES/hacienda_naranjos/app/index.html', window.location.href).href;
-                navigator.clipboard.writeText(url).then(() => {
-                    showToast('✓ Link copiado al portapapeles', 'success');
-                }).catch(err => {
-                    console.error('Error al copiar:', err);
-                });
+        const safeAddAll = (selector, event, callback) => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                if (el) el.addEventListener(event, (e) => callback(el, e));
             });
-        }
+        };
+
+        safeAdd('bs-close', 'click', closeBottomSheet);
+        safeAdd('bottomsheet-overlay', 'click', closeBottomSheet);
+        
+        safeAddAll('.status-btn', 'click', (btn) => changeStatus(btn.dataset.estado));
+
+        safeAdd('search-btn', 'click', searchLote);
+        safeAdd('search-input', 'keypress', (e) => {
+            if (e.key === 'Enter') searchLote();
+        });
+        safeAdd('fab-locate', 'click', locateUser);
+
+        // Share Link (Direct Copy for WhatsApp)
+        safeAdd('share-link-btn', 'click', () => {
+            const copySuccess = () => showToast('Enlace copiado para WhatsApp \u2713', 'success');
+            const copyError = () => showToast('Error al copiar enlace', 'warning');
+            let url = window.location.href;
+            
+            // Adjust URL to point to 01_CLIENTES
+            url = url.replace('02_GESTION/fundo_naranjos', '01_CLIENTES/hacienda_naranjos');
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(copySuccess).catch(() => fallbackCopy(url));
+            } else { fallbackCopy(url); }
+
+            function fallbackCopy(text) {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed'; ta.style.opacity = '0.01';
+                document.body.appendChild(ta);
+                ta.select();
+                try { if (document.execCommand('copy')) copySuccess(); else copyError(); } catch (err) { copyError(); }
+                document.body.removeChild(ta);
+            }
+        });
 
         // Comment toggle
-        document.getElementById('comment-toggle-btn').addEventListener('click', () => {
+        safeAdd('comment-toggle-btn', 'click', () => {
             const btn = document.getElementById('comment-toggle-btn');
             const panel = document.getElementById('comment-panel');
-            const isOpen = btn.classList.toggle('open');
-            panel.classList.toggle('open', isOpen);
-            if (isOpen) document.getElementById('comment-textarea').focus();
+            if (btn && panel) {
+                const isOpen = btn.classList.toggle('open');
+                panel.classList.toggle('open', isOpen);
+                if (isOpen) {
+                    const textarea = document.getElementById('comment-textarea');
+                    if (textarea) textarea.focus();
+                }
+            }
         });
 
         // Save comment
-        document.getElementById('comment-save-btn').addEventListener('click', () => {
+        safeAdd('comment-save-btn', 'click', () => {
             if (!selectedLote) return;
-            const text = document.getElementById('comment-textarea').value.trim();
+            const textarea = document.getElementById('comment-textarea');
+            if (!textarea) return;
+            const text = textarea.value.trim();
             const id = selectedLote.properties.id_lote || selectedLote.properties.Lote;
             DataModule.updateLote(id, { comentario: text });
-            if (typeof SyncModule !== 'undefined') {
-                SyncModule.push(id, { comentario: text });
-            }
+            if (typeof SyncModule !== 'undefined') SyncModule.push(id, { comentario: text });
             selectedLote.properties.comentario = text;
             updateCommentPreview(text);
             closeCommentPanel();
@@ -348,16 +388,15 @@
         });
 
         // Delete comment
-        document.getElementById('comment-delete-btn').addEventListener('click', (e) => {
+        safeAdd('comment-delete-btn', 'click', (e) => {
             e.stopPropagation();
             if (!selectedLote) return;
             const id = selectedLote.properties.id_lote || selectedLote.properties.Lote;
             DataModule.updateLote(id, { comentario: '' });
-            if (typeof SyncModule !== 'undefined') {
-                SyncModule.push(id, { comentario: '' });
-            }
+            if (typeof SyncModule !== 'undefined') SyncModule.push(id, { comentario: '' });
             selectedLote.properties.comentario = '';
-            document.getElementById('comment-textarea').value = '';
+            const textarea = document.getElementById('comment-textarea');
+            if (textarea) textarea.value = '';
             updateCommentPreview('');
             closeCommentPanel();
             showToast('Comentario borrado', 'info');
@@ -368,68 +407,55 @@
         const numpadOverlay = document.getElementById('numpad-overlay');
         const numpadDisplayValue = document.getElementById('numpad-display-value');
 
-        if (document.getElementById('price-row')) {
-            document.getElementById('price-row').addEventListener('click', () => {
-                if (!selectedLote) return;
-                numpadValue = String(selectedLote.properties.precio || '');
-                updateNumpadDisplay();
-                if (numpadOverlay) numpadOverlay.classList.add('active');
-            });
-        }
+        const openNumpad = () => {
+            if (!selectedLote) return;
+            numpadValue = String(selectedLote.properties.precio || '');
+            updateNumpadDisplay();
+            if (numpadOverlay) numpadOverlay.classList.add('active');
+        };
 
-        if (document.getElementById('numpad-cancel')) {
-            document.getElementById('numpad-cancel').addEventListener('click', () => {
-                if (numpadOverlay) numpadOverlay.classList.remove('active');
-            });
-        }
+        safeAdd('price-row', 'click', openNumpad);
+        safeAdd('price-edit-icon', 'click', (e) => {
+            e.stopPropagation();
+            openNumpad();
+        });
 
-        document.querySelectorAll('.numpad__key').forEach(key => {
-            key.addEventListener('click', () => {
-                const k = key.dataset.key;
-                if (k === 'back') {
-                    numpadValue = numpadValue.slice(0, -1);
-                } else if (k === 'confirm') {
-                    const precio = numpadValue === '' ? 0 : parseInt(numpadValue, 10);
-                    if (isNaN(precio) || precio < 0) {
-                        showToast('Ingresa un precio válido', 'warning');
-                        return;
-                    }
-                    if (selectedLote) {
-                        const id = selectedLote.properties.id_lote || selectedLote.properties.Lote;
-                        DataModule.updateLote(id, { precio: precio });
-                        if (typeof SyncModule !== 'undefined') {
-                            SyncModule.push(id, { precio: precio });
-                        }
-                        selectedLote.properties.precio = precio;
-                        selectedLote.properties.precio_display = DataModule.formatPrice(precio);
-                        document.getElementById('bs-price-value').textContent = DataModule.formatPrice(precio);
-                        showToast('Precio actualizado ✓', 'success');
-                    }
-                    if (numpadOverlay) numpadOverlay.classList.remove('active');
-                } else {
-                    if (numpadValue.length < 12) numpadValue += k;
+        safeAdd('numpad-cancel', 'click', () => {
+            if (numpadOverlay) numpadOverlay.classList.remove('active');
+        });
+
+        safeAddAll('.numpad__key', 'click', (key) => {
+            const k = key.dataset.key;
+            if (k === 'back') numpadValue = numpadValue.slice(0, -1);
+            else if (k === 'confirm') {
+                const precio = numpadValue === '' ? 0 : parseInt(numpadValue, 10);
+                if (selectedLote) {
+                    const id = selectedLote.properties.id_lote || selectedLote.properties.Lote;
+                    DataModule.updateLote(id, { precio: precio });
+                    if (typeof SyncModule !== 'undefined') SyncModule.push(id, { precio: precio });
+                    selectedLote.properties.precio = precio;
+                    selectedLote.properties.precio_display = DataModule.formatPrice(precio);
+                    const priceVal = document.getElementById('bs-price-value');
+                    if (priceVal) priceVal.textContent = DataModule.formatPrice(precio);
+                    showToast('Precio actualizado ✓', 'success');
                 }
-                updateNumpadDisplay();
-            });
+                if (numpadOverlay) numpadOverlay.classList.remove('active');
+            } else {
+                if (numpadValue.length < 12) numpadValue += k;
+            }
+            updateNumpadDisplay();
         });
 
         function updateNumpadDisplay() {
             const val = parseInt(numpadValue, 10) || 0;
-            if (numpadDisplayValue) {
-                numpadDisplayValue.innerHTML = '<span class="currency">$</span> ' + val.toLocaleString('es-CL');
-            }
+            if (numpadDisplayValue) numpadDisplayValue.innerHTML = '<span class="currency">$</span> ' + val.toLocaleString('es-CL');
         }
     }
 
     function locateUser() {
         const btn = document.getElementById('fab-locate');
-        if (btn) btn.classList.add('locating');
-        map.locate({ 
-            setView: true, 
-            maxZoom: 18,
-            enableHighAccuracy: true,
-            timeout: 10000
-        });
+        btn.classList.add('locating');
+        map.locate({ setView: true, maxZoom: 18 });
     }
 
     function onLocationFound(e) {
