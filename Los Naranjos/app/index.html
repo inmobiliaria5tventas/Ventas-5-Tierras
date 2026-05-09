@@ -38,21 +38,27 @@
         <!-- ═══ TOP BAR (Standardized Premium) ═══ -->
         <header class="app-header">
             <div class="header-content">
-                <a href="../../index.html" class="back-btn" title="Volver al mapa general">
-                    <i class="fa-solid fa-chevron-left"></i>
-                </a>
-                <div style="text-align: right;">
-                    <div style="font-size: 11px; color: var(--text-dim);">PROYECTO</div>
-                    <div style="font-size: 18px; font-weight: 800;">Los Naranjos</div>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <a href="../../index.html" class="back-btn" title="Volver al mapa general">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </a>
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-dim);">PROYECTO</div>
+                        <div style="font-size: 18px; font-weight: 800;">Los Naranjos</div>
+                    </div>
+                </div>
+                <button id="share-link-btn" class="share-btn" title="Compartir enlace">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span>Compartir</span>
+                </button>
+                <div class="sync-indicator" id="sync-indicator">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Actualizado</span>
                 </div>
             </div>
         </header>
 
-        <!-- ═══ SEARCH (Standardized Premium) ═══ -->
-        <div class="search-container">
-            <input type="text" id="search-input" class="search-input" placeholder="Buscar lote (ej: 42)..." inputmode="numeric">
-            <button id="search-btn" class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
-        </div>
+
 
         <!-- ═══ MAP ═══ -->
         <div id="map"></div>
@@ -60,23 +66,50 @@
         <!-- ═══ FLOATING ACTION BUTTONS ═══ -->
         <div class="fab-container">
             <button id="fab-locate" class="fab fab--locate" title="Mi ubicación">
-                <i class="fa-solid fa-location-crosshairs" style="color:white; font-size: 24px;"></i>
+                <i class="fa-solid fa-location-arrow"></i>
             </button>
         </div>
 
         <!-- ═══ STATS BAR ═══ -->
         <div class="stats-bar">
-            <div class="stat-item stat-item--disponible">
-                <span id="stat-disponible" class="stat-item__count">0</span>
-                <span class="stat-item__label">Disponibles</span>
-            </div>
-            <div class="stat-item stat-item--reservada">
-                <span id="stat-reservada" class="stat-item__count">0</span>
-                <span class="stat-item__label">Reservadas</span>
-            </div>
-            <div class="stat-item stat-item--vendida">
-                <span id="stat-vendida" class="stat-item__count">0</span>
-                <span class="stat-item__label">Vendidas</span>
+            <div class="total-badge"><span id="stats-total">0</span> LOTES TOTALES</div>
+            <div class="stats-inner">
+                <div class="progress-row">
+                    <div class="progress-icon icon--disp"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="progress-content">
+                        <div class="progress-header">
+                            <span class="progress-label">Disponibles</span>
+                            <span class="progress-val" id="stat-disponible">0</span>
+                        </div>
+                        <div class="progress-track">
+                            <div id="bar-disp" class="progress-fill fill--disp"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="progress-row">
+                    <div class="progress-icon icon--res"><i class="fa-solid fa-clock"></i></div>
+                    <div class="progress-content">
+                        <div class="progress-header">
+                            <span class="progress-label">Reservadas</span>
+                            <span class="progress-val" id="stat-reservada">0</span>
+                        </div>
+                        <div class="progress-track">
+                            <div id="bar-res" class="progress-fill fill--res"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="progress-row">
+                    <div class="progress-icon icon--vend"><i class="fa-solid fa-handshake"></i></div>
+                    <div class="progress-content">
+                        <div class="progress-header">
+                            <span class="progress-label">Vendidas</span>
+                            <span class="progress-val" id="stat-vendida">0</span>
+                        </div>
+                        <div class="progress-track">
+                            <div id="bar-vend" class="progress-fill fill--vend"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -118,29 +151,24 @@
             </div>
 
             <!-- Price Editor -->
-            <div id="price-row" class="price-row">
-                <span class="price-row__icon">💰</span>
-                <div class="price-row__content">
-                    <div class="price-row__label">Precio</div>
-                    <div id="bs-price-value" class="price-row__value">$ 0</div>
-                </div>
-                <span class="price-row__edit-icon">✏️</span>
+            <div id="price-row" class="price-row" style="cursor: pointer;">
+            <span class="price-row__icon">💰</span>
+            <div class="price-row__content">
+                <div class="price-row__label">Precio</div>
+                <div id="bs-price-value" class="price-row__value">$ --</div>
             </div>
+            <span id="price-edit-icon" class="price-row__edit-icon">✏️</span>
+        </div>
 
 
-            <!-- Comprobante (hidden for Vendida via JS) -->
-            <div id="comprobante-row" class="comprobante-row">
-                <span class="comprobante-row__icon">📎</span>
-                <span class="comprobante-row__text">Adjuntar comprobante de pago/reserva</span>
-            </div>
 
-            <!-- ── Comment Section ── -->
-            <button id="comment-toggle-btn" class="comment-btn">
+            <!-- Comment Section -->
+            <div id="comment-toggle-btn" class="comment-btn" style="display: flex; align-items: center; cursor: pointer;">
                 <span class="comment-btn__icon">💬</span>
                 <span id="comment-btn-preview" class="comment-btn__preview">Agregar comentario...</span>
-                <button id="comment-delete-btn" class="comment-btn__delete" title="Borrar comentario">🗑️</button>
+                <span id="comment-delete-btn" class="comment-btn__delete" title="Borrar comentario" style="cursor: pointer;">🗑️</span>
                 <i class="fa-solid fa-chevron-down comment-btn__chevron"></i>
-            </button>
+            </div>
             <div id="comment-panel" class="comment-panel">
                 <textarea id="comment-textarea" class="comment-textarea" placeholder="Escribe un comentario breve sobre este lote..."></textarea>
                 <button id="comment-save-btn" class="comment-save-btn"><i class="fa-solid fa-floppy-disk"></i> Guardar comentario</button>
@@ -158,31 +186,33 @@
             </div>
         </div>
 
-        <!-- ═══ FULLSCREEN NUMPAD ═══ -->
+        <!-- MODAL NUMPAD -->
         <div id="numpad-overlay" class="numpad-overlay">
-            <div class="numpad__header">
-                <div class="numpad__title">💰 Editar Precio</div>
-                <button id="numpad-cancel" class="numpad__cancel">Cancelar</button>
-            </div>
-            <div class="numpad__display">
-                <div class="numpad__display-label">Nuevo Precio</div>
-                <div id="numpad-display-value" class="numpad__display-value">
-                    <span class="currency">$</span> 0
+            <div class="numpad-card">
+                <div class="numpad__header">
+                    <div class="numpad__title">💰 Editar Precio</div>
+                    <button id="numpad-cancel" class="numpad__cancel">✕</button>
                 </div>
-            </div>
-            <div class="numpad__grid">
-                <button class="numpad__key" data-key="1">1</button>
-                <button class="numpad__key" data-key="2">2</button>
-                <button class="numpad__key" data-key="3">3</button>
-                <button class="numpad__key" data-key="4">4</button>
-                <button class="numpad__key" data-key="5">5</button>
-                <button class="numpad__key" data-key="6">6</button>
-                <button class="numpad__key" data-key="7">7</button>
-                <button class="numpad__key" data-key="8">8</button>
-                <button class="numpad__key" data-key="9">9</button>
-                <button class="numpad__key numpad__key--back" data-key="back">⌫</button>
-                <button class="numpad__key" data-key="0">0</button>
-                <button class="numpad__key numpad__key--confirm" data-key="confirm">✓</button>
+                <div class="numpad__display">
+                    <div class="numpad__display-label">Nuevo Precio</div>
+                    <div id="numpad-display-value" class="numpad__display-value">
+                        <span class="currency">$</span>0
+                    </div>
+                </div>
+                <div class="numpad__grid">
+                    <button class="numpad__key" data-key="1">1</button>
+                    <button class="numpad__key" data-key="2">2</button>
+                    <button class="numpad__key" data-key="3">3</button>
+                    <button class="numpad__key" data-key="4">4</button>
+                    <button class="numpad__key" data-key="5">5</button>
+                    <button class="numpad__key" data-key="6">6</button>
+                    <button class="numpad__key" data-key="7">7</button>
+                    <button class="numpad__key" data-key="8">8</button>
+                    <button class="numpad__key" data-key="9">9</button>
+                    <button class="numpad__key numpad__key--back" data-key="back"><i class="fa-solid fa-delete-left"></i></button>
+                    <button class="numpad__key" data-key="0">0</button>
+                    <button class="numpad__key numpad__key--confirm" data-key="confirm"><i class="fa-solid fa-check"></i></button>
+                </div>
             </div>
         </div>
 

@@ -5,31 +5,36 @@
  */
 
 const DataModule = (() => {
+    const PROJECT_NAME = 'Los Naranjos';
+    const MAP_CONFIG = {
+        center: [-36.479, -71.837],
+        zoom: 16
+    };
     const STORAGE_KEY = 'hacienda_naranjos_lotes';
     const SYNC_QUEUE_KEY = 'hacienda_naranjos_sync_queue';
     const LAST_UPDATE_KEY = 'hacienda_naranjos_last_update';
     const DATA_VERSION_KEY = 'hacienda_naranjos_data_version';
     const DATA_VERSION = '2'; // Increment this when raw GeoJSON files change
 
-    // ── Raw GeoJSON from qgis2web (loaded in index.html) ──
+    // â”€â”€ Raw GeoJSON from qgis2web (loaded in index.html) â”€â”€
     const rawDisponibles = typeof json_Disponibles_3 !== 'undefined' ? json_Disponibles_3 : { "type": "FeatureCollection", "features": [] };
     const rawReservadas = typeof json_Reservadas_4 !== 'undefined' ? json_Reservadas_4 : { "type": "FeatureCollection", "features": [] };
     const rawVendidas = typeof json_Vendidas_2 !== 'undefined' ? json_Vendidas_2 : { "type": "FeatureCollection", "features": [] };
 
-    // ── Parse price string to number ──
+    // â”€â”€ Parse price string to number â”€â”€
     function parsePrice(priceStr) {
         if (!priceStr) return 0;
         if (typeof priceStr === 'number') return priceStr;
         return parseInt(priceStr.replace(/[^0-9]/g, ''), 10) || 0;
     }
 
-    // ── Format number to CLP ──
+    // â”€â”€ Format number to CLP â”€â”€
     function formatPrice(num) {
         if (!num) return '$ 0';
         return '$ ' + num.toLocaleString('es-CL');
     }
 
-    // ── Normalize geometry to simple Polygon ──
+    // â”€â”€ Normalize geometry to simple Polygon â”€â”€
     function normalizeGeometry(geometry) {
         if (geometry.type === 'MultiPolygon') {
             return {
@@ -40,7 +45,7 @@ const DataModule = (() => {
         return geometry;
     }
 
-    // ── Build unified lotes collection ──
+    // â”€â”€ Build unified lotes collection â”€â”€
     function buildUnifiedCollection() {
         const allFeatures = [];
 
@@ -74,7 +79,7 @@ const DataModule = (() => {
         };
     }
 
-    // ── Public API ──
+    // â”€â”€ Public API â”€â”€
     return {
         STORAGE_KEY,
         init() {
@@ -98,7 +103,7 @@ const DataModule = (() => {
             let changed = false;
 
             collection.features.forEach(f => {
-                const freshLote = fresh.features.find(ff => ff.properties.id_lote === f.properties.id_lote);
+                const freshLote = fresh.features.find(ff => (ff.properties.id_lote || f.properties.Lote || f.properties.fid || f.properties.name) === f.properties.id_lote);
                 if (freshLote && freshLote.properties.estado !== f.properties.estado) {
                     f.properties.estado = freshLote.properties.estado;
                     f.properties.ultima_modificacion = new Date().toISOString();
@@ -123,11 +128,11 @@ const DataModule = (() => {
         },
         getLoteById(id_lote) {
             const collection = this.getAll();
-            return collection.features.find(f => f.properties.id_lote === id_lote);
+            return collection.features.find(f => (f.properties.id_lote || f.properties.Lote || f.properties.fid || f.properties.name) === id_lote);
         },
         updateLote(id_lote, updates) {
             const collection = this.getAll();
-            const feature = collection.features.find(f => f.properties.id_lote === id_lote);
+            const feature = collection.features.find(f => (f.properties.id_lote || f.properties.Lote || f.properties.fid || f.properties.name) === id_lote);
             if (feature) {
                 Object.assign(feature.properties, updates);
                 feature.properties.ultima_modificacion = new Date().toISOString();
@@ -164,6 +169,11 @@ const DataModule = (() => {
             return stats;
         },
         formatPrice,
-        parsePrice
+        parsePrice,
+        PROJECT_NAME,
+        MAP_CONFIG
     };
 })();
+
+
+
