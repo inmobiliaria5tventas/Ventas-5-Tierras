@@ -52,14 +52,8 @@
         .search-input { flex: 1; height: 48px; background: var(--surface); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 0 15px; color: white; font-size: 16px; font-family: inherit; }
         .search-btn { width: 48px; height: 48px; background: var(--primary); border: none; border-radius: 14px; color: white; font-size: 18px; }
 
-        .stats-bar {
-            position: absolute; bottom: 20px; left: 50%; z-index: 10;
-            background: var(--surface); border-radius: 20px; padding: 15px;
-            display: flex; justify-content: space-around; border: 1px solid rgba(255,255,255,0.1);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            width: min(calc(100% - 30px), 500px); transform: translateX(-50%);
-        }
-        .stats-bar.hidden { transform: translateX(-50%) translateY(150%); }
+
+
 
         .fab { position: absolute; right: 15px; bottom: 100px; z-index: 10; width: 50px; height: 50px; border-radius: 15px; background: var(--surface); border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 20px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
         
@@ -141,20 +135,14 @@
 </head>
 <body>
     <div class="loading-screen">
-        <div style="text-align: center; margin-bottom: 25px;">
-            <div style="font-size: 10px; color: var(--text-dim); font-weight: 700; letter-spacing: 2px; margin-bottom: 5px;">PROYECTO</div>
-            <div style="font-size: 24px; font-weight: 800; color: #fff;">Los Naranjos</div>
-        </div>
         <div class="loading-bar"><div class="loading-bar-inner"></div></div>
     </div>
 
     <header class="app-header">
         <div class="header-content">
             <div style="display: flex; align-items: center; gap: 12px;">
-                <a href="../../../02_GESTION/index.html" class="back-btn" style="width: 36px; height: 36px; border-radius: 10px;"><i class="fa-solid fa-chevron-left"></i></a>
                 <div style="display: flex; flex-direction: column;">
-                    <div style="font-size: 8px; color: var(--text-dim); font-weight: 700; letter-spacing: 0.5px;">PROYECTO</div>
-                    <div style="font-size: 14px; font-weight: 800; color: #fff;">Los Naranjos</div>
+                    <div style="font-size: 16px; font-weight: 800; color: #fff;">Hacienda Los Naranjos</div>
                 </div>
             </div>
         </div>
@@ -164,20 +152,6 @@
     <div id="sync-indicator" class="sync-indicator"><i class="fa-solid fa-cloud"></i></div>
     <div id="map"></div>
 
-    <div class="stats-bar">
-        <div class="stat-item">
-            <div id="stat-disponible" class="stat-val stat-val--disp">0</div>
-            <div class="stat-label">Libres</div>
-        </div>
-        <div class="stat-item">
-            <div id="stat-reservada" class="stat-val stat-val--res">0</div>
-            <div class="stat-label">Reserva</div>
-        </div>
-        <div class="stat-item">
-            <div id="stat-vendida" class="stat-val stat-val--vend">0</div>
-            <div class="stat-label">Vendido</div>
-        </div>
-    </div>
 
     <div id="bottomsheet-overlay" class="bottomsheet-overlay"></div>
     <div id="bottomsheet" class="bottomsheet">
@@ -186,7 +160,6 @@
                 <div id="bs-lote-id" class="bottomsheet__title">Lote --</div>
                 <div id="bs-lote-area" class="bottomsheet__area">-- m²</div>
             </div>
-            <button id="bs-close" class="bottomsheet__close"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div id="bs-current-status" class="bottomsheet__current-status"><span>●</span> --</div>
         <div class="detail-row">

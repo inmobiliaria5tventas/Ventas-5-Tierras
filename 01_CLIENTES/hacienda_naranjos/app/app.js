@@ -144,6 +144,11 @@
                 });
             }
         }).addTo(map);
+        
+        // Ajustar el zoom al tamaño completo del proyecto al cargar
+        if (lotesLayer.getLayers().length > 0) {
+            map.fitBounds(lotesLayer.getBounds(), { padding: [10, 10] });
+        }
     }
 
     function selectLote(feature, layer) {
@@ -187,15 +192,14 @@
     function openBottomSheet() {
         document.getElementById('bottomsheet').classList.add('active');
         document.getElementById('bottomsheet-overlay').classList.add('active');
-        document.querySelector('.stats-bar').classList.add('hidden');
     }
 
     function closeBottomSheet() {
         document.getElementById('bottomsheet').classList.remove('active');
         document.getElementById('bottomsheet-overlay').classList.remove('active');
-        document.querySelector('.stats-bar').classList.remove('hidden');
         if (highlightedLayer) {
-            const colors = ESTADO_COLORS[highlightedLayer.feature.properties.estado] || ESTADO_COLORS['Disponible'];
+            const status = highlightedLayer.feature.properties.estado || highlightedLayer.feature.properties.Estado || 'Disponible';
+            const colors = ESTADO_COLORS[status] || ESTADO_COLORS['Disponible'];
             highlightedLayer.setStyle({ weight: 1.5, fillOpacity: colors.opacity, color: colors.stroke });
             highlightedLayer = null;
         }
@@ -203,13 +207,15 @@
 
     function updateStats() {
         const stats = DataModule.getStats();
-        document.getElementById('stat-disponible').textContent = stats.disponible;
-        document.getElementById('stat-reservada').textContent = stats.reservada;
-        document.getElementById('stat-vendida').textContent = stats.vendida;
+        if (document.getElementById('stat-disponible')) document.getElementById('stat-disponible').textContent = stats.disponible;
+        if (document.getElementById('stat-reservada')) document.getElementById('stat-reservada').textContent = stats.reservada;
+        if (document.getElementById('stat-vendida')) document.getElementById('stat-vendida').textContent = stats.vendida;
     }
 
     function setupEventListeners() {
-        document.getElementById('bs-close').addEventListener('click', closeBottomSheet);
+        if (document.getElementById('bs-close')) {
+            document.getElementById('bs-close').addEventListener('click', closeBottomSheet);
+        }
         document.getElementById('bottomsheet-overlay').addEventListener('click', closeBottomSheet);
         
         const locateBtn = document.getElementById('fab-locate');
