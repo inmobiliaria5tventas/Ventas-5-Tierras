@@ -337,8 +337,24 @@
             const copyError = () => showToast('Error al copiar enlace', 'warning');
             let url = window.location.href;
             
-            // Adjust URL to point to 01_CLIENTES
-            url = url.replace('02_GESTION/las_brisas', '01_CLIENTES/hacienda_brisas');
+            // Robust URL transformation from 02_GESTION to 01_CLIENTES
+            const projectMapping = {
+                'las_brisas': 'hacienda_brisas',
+                'hacienda_copihue': 'hacienda_copihue',
+                'hacienda_encinos': 'hacienda_encinos',
+                'fundo_naranjos': 'hacienda_naranjos'
+            };
+
+            // 1. Switch main folder (case-insensitive)
+            url = url.replace(/\/(02_GESTION|Proyectos_ventas|proyecto_clientes)\//i, '/01_CLIENTES/');
+            
+            // 2. Switch subproject folder based on mapping (case-insensitive)
+            Object.keys(projectMapping).forEach(key => {
+                const regex = new RegExp('/' + key + '/', 'i');
+                if (regex.test(url)) {
+                    url = url.replace(regex, '/' + projectMapping[key] + '/');
+                }
+            });
 
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(url).then(copySuccess).catch(() => fallbackCopy(url));
