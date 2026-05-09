@@ -81,8 +81,29 @@ const DataModule = (() => {
                 const collection = buildUnifiedCollection();
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
                 localStorage.setItem(LAST_UPDATE_KEY, new Date().toISOString());
+            } else {
+                this.syncStatus();
             }
             return this.getAll();
+        },
+        syncStatus() {
+            const collection = this.getAll();
+            const fresh = buildUnifiedCollection();
+            let changed = false;
+
+            collection.features.forEach(f => {
+                const freshLote = fresh.features.find(ff => ff.properties.id_lote === f.properties.id_lote);
+                if (freshLote && freshLote.properties.estado !== f.properties.estado) {
+                    f.properties.estado = freshLote.properties.estado;
+                    f.properties.ultima_modificacion = new Date().toISOString();
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
+                localStorage.setItem(LAST_UPDATE_KEY, new Date().toISOString());
+            }
         },
         reset() {
             const collection = buildUnifiedCollection();

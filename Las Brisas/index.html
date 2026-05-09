@@ -37,11 +37,10 @@
         <script src="js/labelgun.min.js"></script>
         <script src="js/labels.js"></script>
         <script src="js/leaflet.photon.js"></script>
-        <script src="data/Acceso_2.js"></script>
-        <script src="data/Etapa2_3.js"></script>
-        <script src="data/Vendidas_4.js"></script>
-        <script src="data/Disponibles_5.js"></script>
-        <script src="data/Reservadas_6.js"></script>
+        <script src="data/Acceso_2.js?v=7"></script>
+        <script src="data/Vendidas_4.js?v=7"></script>
+        <script src="data/Disponibles_5.js?v=7"></script>
+        <script src="data/Reservadas_6.js?v=7"></script>
         <script>
         var map = L.map('map', {
             zoomControl:false, maxZoom:28, minZoom:1
@@ -192,54 +191,7 @@
         });
         bounds_group.addLayer(layer_Acceso_2);
         map.addLayer(layer_Acceso_2);
-        function pop_Etapa2_3(feature, layer) {
-            var popupContent = '<table>\
-                    <tr>\
-                        <td colspan="2">' + (feature.properties['name'] !== null ? autolinker.link(String(feature.properties['name']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
-                    </tr>\
-                    <tr>\
-                        <td colspan="2">' + (feature.properties['Precio'] !== null ? autolinker.link(String(feature.properties['Precio']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
-                    </tr>\
-                    <tr>\
-                        <td colspan="2">' + (feature.properties['Area'] !== null ? autolinker.link(String(feature.properties['Area']).replace(/'/g, '\'').toLocaleString()) : '') + '</td>\
-                    </tr>\
-                </table>';
-            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
-			layer.on('popupopen', function(e) {
-				addClassToPopupIfMedia(content, e.popup);
-			});
-			layer.bindPopup(content, { maxHeight: 400 });
-        }
 
-        function style_Etapa2_3_0() {
-            return {
-                pane: 'pane_Etapa2_3',
-                opacity: 1,
-                color: 'rgba(255,255,255,0.773)',
-                dashArray: '',
-                lineCap: 'butt',
-                lineJoin: 'miter',
-                weight: 1.0, 
-                fill: true,
-                fillOpacity: 1,
-                fillColor: 'rgba(51,99,255,0.29404313725490194)',
-                interactive: false,
-            }
-        }
-        map.createPane('pane_Etapa2_3');
-        map.getPane('pane_Etapa2_3').style.zIndex = 403;
-        map.getPane('pane_Etapa2_3').style['mix-blend-mode'] = 'normal';
-        var layer_Etapa2_3 = new L.geoJson(json_Etapa2_3, {
-            attribution: '',
-            interactive: false,
-            dataVar: 'json_Etapa2_3',
-            layerName: 'layer_Etapa2_3',
-            pane: 'pane_Etapa2_3',
-            onEachFeature: pop_Etapa2_3,
-            style: style_Etapa2_3_0,
-        });
-        bounds_group.addLayer(layer_Etapa2_3);
-        map.addLayer(layer_Etapa2_3);
         function pop_Vendidas_4(feature, layer) {
             var popupContent = '<table>\
                     <tr>\
@@ -402,7 +354,6 @@
             {label: '<img src="legend/Reservadas_6.png" /> Reservadas', layer: layer_Reservadas_6},
             {label: '<img src="legend/Disponibles_5.png" /> Disponibles', layer: layer_Disponibles_5},
             {label: '<img src="legend/Vendidas_4.png" /> Vendidas', layer: layer_Vendidas_4},
-            {label: '<img src="legend/Etapa2_3.png" /> Etapa 2', layer: layer_Etapa2_3},
             {label: '<img src="legend/Acceso_2.png" /> Acceso', layer: layer_Acceso_2},
             {label: "Satelite", layer: layer_Satelite_1, radioGroup: 'bm' },
             {label: "OpenStreetMap", layer: layer_OpenStreetMap_0, radioGroup: 'bm' },]
@@ -418,18 +369,7 @@
         lay.addTo(map);
         setBounds();
         var i = 0;
-        layer_Etapa2_3.eachLayer(function(layer) {
-            var context = {
-                feature: layer.feature,
-                variables: {}
-            };
-            layer.bindTooltip((layer.feature.properties['name'] !== null?String('<div style="color: #ffffff; font-size: 8pt; font-family: \'Arial\', sans-serif;">' + layer.feature.properties['name']) + '</div>':''), {permanent: true, offset: [-0, -16], className: 'css_Etapa2_3'});
-            labels.push(layer);
-            totalMarkers += 1;
-              layer.added = true;
-              addLabel(layer, i);
-              i++;
-        });
+
         var i = 0;
         layer_Vendidas_4.eachLayer(function(layer) {
             var context = {
@@ -469,15 +409,15 @@
               addLabel(layer, i);
               i++;
         });
-        resetLabels([layer_Etapa2_3,layer_Vendidas_4,layer_Disponibles_5,layer_Reservadas_6]);
+        resetLabels([layer_Vendidas_4,layer_Disponibles_5,layer_Reservadas_6]);
         map.on("zoomend", function(){
-            resetLabels([layer_Etapa2_3,layer_Vendidas_4,layer_Disponibles_5,layer_Reservadas_6]);
+            resetLabels([layer_Vendidas_4,layer_Disponibles_5,layer_Reservadas_6]);
         });
         map.on("layeradd", function(){
-            resetLabels([layer_Etapa2_3,layer_Vendidas_4,layer_Disponibles_5,layer_Reservadas_6]);
+            resetLabels([layer_Vendidas_4,layer_Disponibles_5,layer_Reservadas_6]);
         });
         map.on("layerremove", function(){
-            resetLabels([layer_Etapa2_3,layer_Vendidas_4,layer_Disponibles_5,layer_Reservadas_6]);
+            resetLabels([layer_Vendidas_4,layer_Disponibles_5,layer_Reservadas_6]);
         });
         </script>        
     </body>
