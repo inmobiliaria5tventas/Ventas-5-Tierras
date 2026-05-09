@@ -149,11 +149,6 @@ const SyncModule = (() => {
                 
                 // Only update if it's a valid number and greater than or equal to 0
                 if (!isNaN(precio) && precio >= 0) {
-                    // BLINDAJE DE REGLA DE NEGOCIO: Lotes vendidos siempre $ 0
-                    // Usamos búsqueda parcial para capturar "Vendido", "Vendida", "VENDIDAS", etc.
-                    var currentEstado = remoteEstado || getEstadoKey(localFeature.properties.estado);
-                    if (currentEstado && String(currentEstado).toLowerCase().includes('vend')) precio = 0;
-
                     if (precio !== localFeature.properties.precio) {
                         console.log('SyncModule: Lote ' + remoteId + ' PRICE update -> ' + precio);
                         localFeature.properties.precio = precio;
