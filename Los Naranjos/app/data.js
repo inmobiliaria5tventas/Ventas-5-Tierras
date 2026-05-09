@@ -8,6 +8,8 @@ const DataModule = (() => {
     const STORAGE_KEY = 'hacienda_naranjos_lotes';
     const SYNC_QUEUE_KEY = 'hacienda_naranjos_sync_queue';
     const LAST_UPDATE_KEY = 'hacienda_naranjos_last_update';
+    const DATA_VERSION_KEY = 'hacienda_naranjos_data_version';
+    const DATA_VERSION = '2'; // Increment this when raw GeoJSON files change
 
     // ── Raw GeoJSON from qgis2web (loaded in index.html) ──
     const rawDisponibles = typeof json_Disponibles_3 !== 'undefined' ? json_Disponibles_3 : { "type": "FeatureCollection", "features": [] };
@@ -77,12 +79,37 @@ const DataModule = (() => {
         STORAGE_KEY,
         init() {
             const stored = localStorage.getItem(STORAGE_KEY);
-            if (!stored) {
+            const storedVersion = localStorage.getItem(DATA_VERSION_KEY);
+            
+            // Force rebuild if no data or version mismatch
+            if (!stored || storedVersion !== DATA_VERSION) {
                 const collection = buildUnifiedCollection();
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
                 localStorage.setItem(LAST_UPDATE_KEY, new Date().toISOString());
+                localStorage.setItem(DATA_VERSION_KEY, DATA_VERSION);
+            } else {
+                this.syncStatus();
             }
             return this.getAll();
+        },
+        syncStatus() {
+            const collection = this.getAll();
+            const fresh = buildUnifiedCollection();
+            let changed = false;
+
+            collection.features.forEach(f => {
+                const freshLote = fresh.features.find(ff => ff.properties.id_lote === f.properties.id_lote);
+                if (freshLote && freshLote.properties.estado !== f.properties.estado) {
+                    f.properties.estado = freshLote.properties.estado;
+                    f.properties.ultima_modificacion = new Date().toISOString();
+                    changed = true;
+                }
+            });
+
+            if (changed) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(collection));
+                localStorage.setItem(LAST_UPDATE_KEY, new Date().toISOString());
+            }
         },
         reset() {
             const collection = buildUnifiedCollection();

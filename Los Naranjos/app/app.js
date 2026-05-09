@@ -1,63 +1,95 @@
 /**
- * APP.JS - Hacienda Las Brisas - Mobile Management App
- * Main application logic: Map, BottomSheet, Quick-Tap, Numpad, GPS
+ * APP.JS - Hacienda Los Naranjos - Mobile Management App (Standardized Premium)
  */
 
 (() => {
-    // ── State ──
     let map;
     let lotesLayer;
     let selectedLote = null;
     let isOnline = true;
-    let gpsMarker = null;
     let highlightedLayer = null;
-    let numpadValue = '';
-    let numpadTargetLote = null;
+    let userMarker = null;
 
-    // ── Color Config ──
     const ESTADO_COLORS = {
         'Disponible': { fill: '#22c55e', stroke: '#16a34a', opacity: 0.45 },
         'Reservada': { fill: '#eab308', stroke: '#ca8a04', opacity: 0.5 },
         'Vendida': { fill: '#ef4444', stroke: '#dc2626', opacity: 0.45 },
     };
 
-    // ── Init ──
     function init() {
-        showLoading();
-        DataModule.init();
-        initMap();
-        renderLotes();
-        updateStats();
-        setupEventListeners();
-        simulateOnlineStatus();
-        hideLoading();
+        try {
+            showLoading();
+            DataModule.init();
+            initMap();
+            renderLotes();
+            updateStats();
+            setupEventListeners();
+            simulateOnlineStatus();
+
+            let loaded = false;
+            const forceLoad = setTimeout(() => {
+                if (!loaded) {
+                    console.warn('Sync taking too long, showing map with local data...');
+                    hideLoading();
+                    loaded = true;
+                }
+            }, 5000);
+
+            // ── Sync con Google Sheets ──
+            if (typeof SyncModule !== 'undefined') {
+                SyncModule.init('Los Naranjos')
+                    .then(function() {
+                        renderLotes();
+                        updateStats();
+                    })
+                    .finally(() => {
+                        if (!loaded) {
+                            clearTimeout(forceLoad);
+                            hideLoading();
+                            loaded = true;
+                        }
+                    });
+            } else {
+                hideLoading();
+                loaded = true;
+            }
+        } catch (error) {
+            console.error('Error during Los Naranjos initialization:', error);
+            hideLoading();
+        }
     }
 
-    // ── Loading Screen ──
+    window.refreshMap = function() {
+        renderLotes();
+        updateStats();
+    };
+
     function showLoading() {
         const bar = document.querySelector('.loading-screen__bar-inner');
         if (bar) {
             let w = 0;
             const interval = setInterval(() => {
-                w += Math.random() * 30;
-                if (w > 100) w = 100;
+                w += Math.random() * 25;
+                if (w > 90) w = 90;
                 bar.style.width = w + '%';
-                if (w >= 100) clearInterval(interval);
-            }, 150);
+                if (w >= 90) clearInterval(interval);
+            }, 100);
         }
     }
 
     function hideLoading() {
+        const bar = document.querySelector('.loading-screen__bar-inner');
+        if (bar) bar.style.width = '100%';
+
         setTimeout(() => {
             const screen = document.querySelector('.loading-screen');
             if (screen) {
                 screen.classList.add('fade-out');
                 setTimeout(() => screen.remove(), 500);
             }
-        }, 1200);
+        }, 600);
     }
 
-    // ── Map Init ──
     function initMap() {
         map = L.map('map', {
             zoomControl: false,
@@ -66,504 +98,296 @@
             attributionControl: false
         });
 
-        // Satellite hybrid basemap
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 20,
-            maxNativeZoom: 18
+            maxZoom: 20
         }).addTo(map);
 
-        // Labels overlay
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-            maxZoom: 20,
-            opacity: 0.7
+            maxZoom: 20, opacity: 0.6
         }).addTo(map);
 
-        // Zoom control top-right
-        L.control.zoom({ position: 'topright' }).addTo(map);
-
-        // Fit to bounds of Hacienda
+        // Position on Los Naranjos
         map.setView([-36.479, -71.837], 16);
 
-        // Toggle labels based on zoom level (Scale >= 1:10000 approx)
+        map.on('locationfound', onLocationFound);
+        map.on('locationerror', onLocationError);
+
         function updateLabelsVisibility() {
-            if (map.getZoom() < 16) {
-                map.getContainer().classList.add('map-low-zoom');
-            } else {
-                map.getContainer().classList.remove('map-low-zoom');
-            }
+            if (map.getZoom() < 16) map.getContainer().classList.add('map-low-zoom');
+            else map.getContainer().classList.remove('map-low-zoom');
         }
         map.on('zoomend', updateLabelsVisibility);
-        updateLabelsVisibility(); // Initial check
+        updateLabelsVisibility();
 
-        // Close bottomsheet on map click (no feature)
         map.on('click', (e) => {
-            if (!e.originalEvent._loteClicked) {
-                closeBottomSheet();
-            }
+            if (!e.originalEvent._loteClicked) closeBottomSheet();
         });
     }
 
-    // ── Render Lotes ──
     function renderLotes() {
-        if (lotesLayer) {
-            map.removeLayer(lotesLayer);
-        }
-
+        if (lotesLayer) map.removeLayer(lotesLayer);
         const collection = DataModule.getAll();
 
-        lotesLayer = L.geoJSON(collection, {
+        // ── Filter invalid geometries to prevent Leaflet crash ──
+        const validFeatures = collection.features.filter(f => 
+            f.geometry && f.geometry.coordinates && f.geometry.coordinates.length > 0
+        );
+        const validCollection = { ...collection, features: validFeatures };
+
+        lotesLayer = L.geoJSON(validCollection, {
             style: (feature) => {
-                const estado = feature.properties.estado;
-                const colors = ESTADO_COLORS[estado] || ESTADO_COLORS['Disponible'];
-                return {
-                    fillColor: colors.fill,
-                    fillOpacity: colors.opacity,
-                    color: colors.stroke,
-                    weight: 2,
-                    opacity: 0.8
-                };
+                const colors = ESTADO_COLORS[feature.properties.estado] || ESTADO_COLORS['Disponible'];
+                return { fillColor: colors.fill, fillOpacity: colors.opacity, color: colors.stroke, weight: 2 };
             },
             onEachFeature: (feature, layer) => {
-                // Tooltip with lote number
-                layer.bindTooltip(
-                    `<span style="font-size:12px;font-weight:700;">Lote ${feature.properties.id_lote}</span>`,
-                    {
-                        permanent: true,
-                        direction: 'center',
-                        className: 'lote-label'
-                    }
-                );
-
-                // Click handler
+                layer.bindTooltip(`Lote ${feature.properties.id_lote}`, {
+                    permanent: true, direction: 'center', className: 'lote-label'
+                });
                 layer.on('click', (e) => {
                     e.originalEvent._loteClicked = true;
                     selectLote(feature, layer);
                 });
-
-                // Hover effects
-                layer.on('mouseover', () => {
-                    if (highlightedLayer !== layer) {
-                        layer.setStyle({ weight: 3, fillOpacity: 0.7 });
-                    }
-                });
-
-                layer.on('mouseout', () => {
-                    if (highlightedLayer !== layer) {
-                        const colors = ESTADO_COLORS[feature.properties.estado] || ESTADO_COLORS['Disponible'];
-                        layer.setStyle({ weight: 2, fillOpacity: colors.opacity });
-                    }
-                });
             }
         }).addTo(map);
     }
 
-    // ── Select Lote (Open BottomSheet) ──
     function selectLote(feature, layer) {
         selectedLote = feature;
-
-        // Highlight
         if (highlightedLayer) {
-            const prevColors = ESTADO_COLORS[highlightedLayer.feature.properties.estado] || ESTADO_COLORS['Disponible'];
-            highlightedLayer.setStyle({ weight: 2, fillOpacity: prevColors.opacity });
+            const prev = ESTADO_COLORS[highlightedLayer.feature.properties.estado] || ESTADO_COLORS['Disponible'];
+            highlightedLayer.setStyle({ weight: 2, fillOpacity: prev.opacity });
         }
         highlightedLayer = layer;
         layer.setStyle({ weight: 4, fillOpacity: 0.8, color: '#fff' });
 
-        // Center map on lote
-        map.flyTo(layer.getBounds().getCenter(), Math.max(map.getZoom(), 17), {
-            duration: 0.5
-        });
-
-        // Populate bottomsheet
         const props = feature.properties;
         const isVendida = props.estado === 'Vendida';
 
         document.getElementById('bs-lote-id').textContent = `Lote ${props.id_lote}`;
         document.getElementById('bs-lote-area').textContent = props.area;
+        document.getElementById('bs-price-value').textContent = props.precio_display || DataModule.formatPrice(props.precio || 33000000);
+        
+        const badge = document.getElementById('bs-current-status');
+        badge.className = `bottomsheet__current-status bottomsheet__current-status--${props.estado.toLowerCase()}`;
+        badge.innerHTML = `<span>●</span> ${props.estado}`;
 
-        // Status badge
-        const statusBadge = document.getElementById('bs-current-status');
-        statusBadge.className = `bottomsheet__current-status bottomsheet__current-status--${props.estado.toLowerCase()}`;
-        statusBadge.innerHTML = `<span>●</span> ${props.estado}`;
+        // Buttons
+        document.querySelectorAll('.status-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.estado === props.estado);
+        });
 
-        // Show/hide editing controls
-        document.querySelector('.status-buttons').style.display = isVendida ? 'none' : '';
-        document.getElementById('price-row').style.display = isVendida ? 'none' : '';
-        document.getElementById('comprobante-row').style.display = (props.estado === 'Reservada') ? '' : 'none';
-        document.getElementById('bs-vendida-info').style.display = isVendida ? 'block' : 'none';
-
-        // Active status button (only relevant for non-vendida)
-        if (!isVendida) {
-            document.querySelectorAll('.status-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.estado === props.estado);
-            });
-        }
-
-        // Price
-        document.getElementById('bs-price-value').textContent = props.precio_display || DataModule.formatPrice(props.precio);
+        // Visibility
+        document.querySelector('.status-buttons').style.display = 'grid';
+        document.getElementById('price-row').style.display = 'flex';
+        document.getElementById('bs-vendida-info').style.display = 'none';
 
         // Last modified
-        const date = new Date(props.ultima_modificacion);
-        document.getElementById('bs-last-modified').textContent =
-            `Última modificación: ${date.toLocaleDateString('es-CL')} ${date.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`;
+        const date = props.ultima_modificacion ? new Date(props.ultima_modificacion) : new Date();
+        document.getElementById('bs-last-modified').textContent = 
+            `Última actualización: ${date.toLocaleDateString('es-CL')} ${date.toLocaleTimeString('es-CL', {hour:'2-digit', minute:'2-digit'})}`;
 
-        // Open bottomsheet
+        // Comment
+        closeCommentPanel();
+        const comentario = props.comentario || '';
+        document.getElementById('comment-textarea').value = comentario;
+        updateCommentPreview(comentario);
+
         openBottomSheet();
+        map.flyTo(layer.getBounds().getCenter(), 18, { duration: 0.5 });
     }
 
-    // ── BottomSheet Controls ──
     function openBottomSheet() {
         document.getElementById('bottomsheet').classList.add('active');
         document.getElementById('bottomsheet-overlay').classList.add('active');
-        document.querySelector('.stats-bar').classList.add('hidden');
+        const stats = document.querySelector('.stats-bar');
+        if (stats) stats.classList.add('hidden');
     }
 
     function closeBottomSheet() {
         document.getElementById('bottomsheet').classList.remove('active');
         document.getElementById('bottomsheet-overlay').classList.remove('active');
-        document.querySelector('.stats-bar').classList.remove('hidden');
-        selectedLote = null;
-
+        const stats = document.querySelector('.stats-bar');
+        if (stats) stats.classList.remove('hidden');
+        closeCommentPanel();
         if (highlightedLayer) {
             const colors = ESTADO_COLORS[highlightedLayer.feature.properties.estado] || ESTADO_COLORS['Disponible'];
-            highlightedLayer.setStyle({
-                weight: 2,
-                fillOpacity: colors.opacity,
-                color: colors.stroke
-            });
+            highlightedLayer.setStyle({ weight: 2, fillOpacity: colors.opacity, color: colors.stroke });
             highlightedLayer = null;
         }
     }
 
-    // ── Quick-Tap Status Change ──
+    function closeCommentPanel() {
+        const btn = document.getElementById('comment-toggle-btn');
+        const panel = document.getElementById('comment-panel');
+        if (btn) btn.classList.remove('open');
+        if (panel) panel.classList.remove('open');
+    }
+
+    function updateCommentPreview(text) {
+        const preview = document.getElementById('comment-btn-preview');
+        const deleteBtn = document.getElementById('comment-delete-btn');
+        if (!preview) return;
+        if (text && text.trim()) {
+            preview.textContent = text.trim();
+            preview.classList.add('has-comment');
+            if (deleteBtn) deleteBtn.classList.add('visible');
+        } else {
+            preview.textContent = 'Agregar comentario...';
+            preview.classList.remove('has-comment');
+            if (deleteBtn) deleteBtn.classList.remove('visible');
+        }
+    }
+
     function changeStatus(newEstado) {
         if (!selectedLote) return;
-        if (selectedLote.properties.estado === 'Vendida') {
-            showToast('🔒 Lote vendido — no editable', 'warning');
-            return;
+        DataModule.updateLote(selectedLote.properties.id_lote, { estado: newEstado });
+
+        // ── Sync a Google Sheets ──
+        if (typeof SyncModule !== 'undefined') {
+            SyncModule.push(selectedLote.properties.id_lote, { estado: newEstado });
         }
 
-        const loteId = selectedLote.properties.id_lote;
-        DataModule.updateLote(loteId, { estado: newEstado });
-
-        // Refresh
         renderLotes();
         updateStats();
-
-        // Re-select the lote
-        const updatedFeature = DataModule.getLoteById(loteId);
-        lotesLayer.eachLayer(layer => {
-            if (layer.feature && layer.feature.properties.id_lote === loteId) {
-                selectLote(layer.feature, layer);
-            }
-        });
-
-        showToast(`Lote ${loteId} → ${newEstado}`, 'success');
-        updateSyncBadge();
+        
+        const updated = DataModule.getLoteById(selectedLote.properties.id_lote);
+        selectLote(updated, highlightedLayer);
+        showToast(`Lote ${selectedLote.properties.id_lote} → ${newEstado}`, 'success');
     }
 
-    // ── Price Numpad ──
-    function openNumpad() {
-        if (!selectedLote) return;
-        if (selectedLote.properties.estado === 'Vendida') {
-            showToast('🔒 Lote vendido — no editable', 'warning');
-            return;
-        }
-        numpadTargetLote = selectedLote.properties.id_lote;
-        numpadValue = String(selectedLote.properties.precio || '');
-        updateNumpadDisplay();
-        document.getElementById('numpad-overlay').classList.add('active');
-    }
-
-    function closeNumpad() {
-        document.getElementById('numpad-overlay').classList.remove('active');
-        numpadValue = '';
-        numpadTargetLote = null;
-    }
-
-    function numpadKeyPress(key) {
-        if (key === 'back') {
-            numpadValue = numpadValue.slice(0, -1);
-        } else if (key === 'confirm') {
-            confirmPrice();
-            return;
-        } else if (key === '000') {
-            numpadValue += '000';
-        } else {
-            if (numpadValue.length < 12) {
-                numpadValue += key;
-            }
-        }
-        updateNumpadDisplay();
-    }
-
-    function updateNumpadDisplay() {
-        const display = document.getElementById('numpad-display-value');
-        const num = parseInt(numpadValue, 10) || 0;
-        display.innerHTML = `<span class="currency">$</span> ${num.toLocaleString('es-CL')}`;
-    }
-
-    function confirmPrice() {
-        if (!numpadTargetLote) return;
-        const newPrice = parseInt(numpadValue, 10) || 0;
-
-        DataModule.updateLote(numpadTargetLote, { precio: newPrice });
-
-        // Refresh bottomsheet price
-        document.getElementById('bs-price-value').textContent = DataModule.formatPrice(newPrice);
-
-        // Update last modified
-        const now = new Date();
-        document.getElementById('bs-last-modified').textContent =
-            `Última modificación: ${now.toLocaleDateString('es-CL')} ${now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}`;
-
-        showToast(`Precio actualizado: ${DataModule.formatPrice(newPrice)}`, 'success');
-        updateSyncBadge();
-        closeNumpad();
-    }
-
-    // ── GPS / Locate ──
-    function locateUser() {
-        const btn = document.querySelector('.fab--locate');
-        btn.classList.add('locating');
-
-        if (!navigator.geolocation) {
-            showToast('GPS no disponible', 'warning');
-            btn.classList.remove('locating');
-            return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const { latitude, longitude } = pos.coords;
-
-                // Remove old marker
-                if (gpsMarker) map.removeLayer(gpsMarker);
-
-                // Create GPS marker
-                const icon = L.divIcon({
-                    className: 'gps-marker',
-                    html: '<div class="gps-marker__pulse"></div><div class="gps-marker__dot"></div>',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20]
-                });
-
-                gpsMarker = L.marker([latitude, longitude], { icon }).addTo(map);
-                map.flyTo([latitude, longitude], 18, { duration: 1 });
-
-                // Find nearest lote
-                findNearestLote(latitude, longitude);
-
-                btn.classList.remove('locating');
-                showToast('📍 Ubicación encontrada', 'info');
-            },
-            (err) => {
-                btn.classList.remove('locating');
-                // Demo fallback: center on project area
-                const centerLat = -36.1205;
-                const centerLng = -71.7770;
-
-                if (gpsMarker) map.removeLayer(gpsMarker);
-
-                const icon = L.divIcon({
-                    className: 'gps-marker',
-                    html: '<div class="gps-marker__pulse"></div><div class="gps-marker__dot"></div>',
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20]
-                });
-
-                gpsMarker = L.marker([centerLat, centerLng], { icon }).addTo(map);
-                map.flyTo([centerLat, centerLng], 17, { duration: 1 });
-
-                showToast('📍 Ubicación simulada (demo)', 'info');
-            },
-            { enableHighAccuracy: true, timeout: 10000 }
-        );
-    }
-
-    function findNearestLote(lat, lng) {
-        const point = L.latLng(lat, lng);
-        let minDist = Infinity;
-        let nearestLayer = null;
-
-        lotesLayer.eachLayer(layer => {
-            const center = layer.getBounds().getCenter();
-            const dist = point.distanceTo(center);
-            if (dist < minDist) {
-                minDist = dist;
-                nearestLayer = layer;
-            }
-        });
-
-        if (nearestLayer && minDist < 500) {
-            selectLote(nearestLayer.feature, nearestLayer);
-        }
-    }
-
-    // ── Stats ──
     function updateStats() {
         const stats = DataModule.getStats();
-        document.getElementById('stat-disponible').textContent = stats.disponible;
-        document.getElementById('stat-reservada').textContent = stats.reservada;
-        document.getElementById('stat-vendida').textContent = stats.vendida;
+        const dispEl = document.getElementById('stat-disponible');
+        const resEl = document.getElementById('stat-reservada');
+        const vendEl = document.getElementById('stat-vendida');
+        
+        if (dispEl) dispEl.textContent = stats.disponible;
+        if (resEl) resEl.textContent = stats.reservada;
+        if (vendEl) vendEl.textContent = stats.vendida;
     }
 
-    // ── Sync Badge ──
-    function updateSyncBadge() {
-        const queue = DataModule.getSyncQueue();
-        const badge = document.getElementById('sync-badge');
-        const count = document.getElementById('sync-count');
-
-        if (queue.length > 0) {
-            badge.classList.remove('hidden');
-            count.textContent = queue.length;
-
-            // Simulate auto-sync after 3s
-            if (isOnline) {
-                setTimeout(() => {
-                    badge.classList.add('syncing');
-                    setTimeout(() => {
-                        DataModule.clearSyncQueue();
-                        badge.classList.remove('syncing');
-                        badge.classList.add('hidden');
-                        showToast('✅ Cambios sincronizados', 'success');
-                    }, 1500);
-                }, 3000);
-            }
-        } else {
-            badge.classList.add('hidden');
-        }
-    }
-
-    // ── Online/Offline Simulation ──
-    function simulateOnlineStatus() {
-        const updateStatus = () => {
-            isOnline = navigator.onLine;
-            const el = document.getElementById('conn-status');
-            if (isOnline) {
-                el.className = 'conn-status conn-status--online';
-                el.innerHTML = '<span class="conn-status__dot"></span> Online';
-            } else {
-                el.className = 'conn-status conn-status--offline';
-                el.innerHTML = '<span class="conn-status__dot"></span> Offline';
-            }
-        };
-
-        window.addEventListener('online', updateStatus);
-        window.addEventListener('offline', updateStatus);
-        updateStatus();
-    }
-
-    // ── Toast ──
-    function showToast(message, type = 'info') {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = `toast toast--${type}`;
-        toast.textContent = message;
-        container.appendChild(toast);
-
-        setTimeout(() => {
-            toast.classList.add('removing');
-            setTimeout(() => toast.remove(), 300);
-        }, 2500);
-    }
-
-    // ── Search Lote ──
-    function searchLote() {
-        const input = document.getElementById('search-input').value.trim();
-        if (!input) return;
-
-        let foundLayer = null;
-        lotesLayer.eachLayer(layer => {
-            // Match input precisely or partially against id_lote
-            if (layer.feature && String(layer.feature.properties.id_lote).toLowerCase() === input.toLowerCase()) {
-                foundLayer = layer;
-            }
-        });
-
-        if (foundLayer) {
-            selectLote(foundLayer.feature, foundLayer);
-            document.getElementById('search-input').value = '';
-            document.getElementById('search-input').blur();
-        } else {
-            showToast(`Lote ${input} no encontrado`, 'warning');
-        }
-    }
-
-    // ── Reset Data ──
-    function resetData() {
-        if (confirm('⚠️ ¿Restablecer todos los datos a su estado original?')) {
-            DataModule.reset();
-            renderLotes();
-            updateStats();
-            closeBottomSheet();
-            showToast('Datos restablecidos', 'info');
-        }
-    }
-
-    // ── Event Listeners ──
     function setupEventListeners() {
-        // BottomSheet close
-        document.getElementById('bs-close').addEventListener('click', closeBottomSheet);
-        document.getElementById('bottomsheet-overlay').addEventListener('click', closeBottomSheet);
-
-        // Status buttons
+        if (document.getElementById('bs-close')) {
+            document.getElementById('bs-close').addEventListener('click', closeBottomSheet);
+        }
+        if (document.getElementById('bottomsheet-overlay')) {
+            document.getElementById('bottomsheet-overlay').addEventListener('click', closeBottomSheet);
+        }
         document.querySelectorAll('.status-btn').forEach(btn => {
             btn.addEventListener('click', () => changeStatus(btn.dataset.estado));
         });
-
-        // Search features
-        const searchBtn = document.getElementById('search-btn');
-        if (searchBtn) searchBtn.addEventListener('click', searchLote);
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) {
-            searchInput.addEventListener('keypress', (e) => {
+        if (document.getElementById('search-btn')) {
+            document.getElementById('search-btn').addEventListener('click', searchLote);
+        }
+        if (document.getElementById('search-input')) {
+            document.getElementById('search-input').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') searchLote();
             });
         }
+        if (document.getElementById('fab-locate')) {
+            document.getElementById('fab-locate').addEventListener('click', locateUser);
+        }
 
-        // Price editor
-        document.getElementById('price-row').addEventListener('click', openNumpad);
+        // Comment toggle
+        if (document.getElementById('comment-toggle-btn')) {
+            document.getElementById('comment-toggle-btn').addEventListener('click', () => {
+                const btn = document.getElementById('comment-toggle-btn');
+                const panel = document.getElementById('comment-panel');
+                const isOpen = btn.classList.toggle('open');
+                panel.classList.toggle('open', isOpen);
+                if (isOpen) document.getElementById('comment-textarea').focus();
+            });
+        }
 
-        // Numpad keys
-        document.querySelectorAll('.numpad__key').forEach(key => {
-            key.addEventListener('click', () => numpadKeyPress(key.dataset.key));
+        // Save comment
+        if (document.getElementById('comment-save-btn')) {
+            document.getElementById('comment-save-btn').addEventListener('click', () => {
+                if (!selectedLote) return;
+                const text = document.getElementById('comment-textarea').value.trim();
+                DataModule.updateLote(selectedLote.properties.id_lote, { comentario: text });
+
+                if (typeof SyncModule !== 'undefined') {
+                    SyncModule.push(selectedLote.properties.id_lote, { comentario: text });
+                }
+
+                selectedLote.properties.comentario = text;
+                updateCommentPreview(text);
+                closeCommentPanel();
+                showToast('Comentario guardado ✓', 'success');
+            });
+        }
+
+        // Delete comment
+        if (document.getElementById('comment-delete-btn')) {
+            document.getElementById('comment-delete-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!selectedLote) return;
+                DataModule.updateLote(selectedLote.properties.id_lote, { comentario: '' });
+                if (typeof SyncModule !== 'undefined') {
+                    SyncModule.push(selectedLote.properties.id_lote, { comentario: '' });
+                }
+                selectedLote.properties.comentario = '';
+                document.getElementById('comment-textarea').value = '';
+                updateCommentPreview('');
+                closeCommentPanel();
+                showToast('Comentario borrado', 'info');
+            });
+        }
+    }
+
+    function locateUser() {
+        const btn = document.getElementById('fab-locate');
+        btn.classList.add('locating');
+        map.locate({ setView: true, maxZoom: 18 });
+    }
+
+    function onLocationFound(e) {
+        const btn = document.getElementById('fab-locate');
+        btn.classList.remove('locating');
+        
+        if (userMarker) map.removeLayer(userMarker);
+        
+        const gpsIcon = L.divIcon({
+            className: 'gps-marker',
+            html: '<div class="gps-marker__pulse"></div><div class="gps-marker__dot"></div>',
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
         });
 
-        // Numpad cancel
-        document.getElementById('numpad-cancel').addEventListener('click', closeNumpad);
+        userMarker = L.marker(e.latlng, { icon: gpsIcon }).addTo(map);
+    }
 
-        /*
-        // GPS button
-        document.getElementById('fab-locate').addEventListener('click', locateUser);
-        */
+    function onLocationError(e) {
+        const btn = document.getElementById('fab-locate');
+        btn.classList.remove('locating');
+        showToast('No se pudo obtener la ubicación', 'warning');
+    }
 
-        /* 
-        // Dashboard button
-        document.getElementById('fab-dashboard').addEventListener('click', () => {
-            window.open('dashboard.html', '_blank');
+    function searchLote() {
+        const val = document.getElementById('search-input').value.trim();
+        if (!val) return;
+        let found = null;
+        lotesLayer.eachLayer(l => {
+            if (String(l.feature.properties.id_lote) === val) found = l;
         });
+        if (found) selectLote(found.feature, found);
+        else showToast('Lote no encontrado', 'warning');
+    }
 
-        // Reset button
-        document.getElementById('fab-reset').addEventListener('click', resetData);
-        */
+    function showToast(msg, type) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+        const t = document.createElement('div');
+        t.className = `toast toast--${type}`;
+        t.innerHTML = `<i class="fa-solid fa-circle-info"></i> ${msg}`;
+        container.appendChild(t);
+        setTimeout(() => t.remove(), 3000);
+    }
 
-        // Sync badge click
-        document.getElementById('sync-badge').addEventListener('click', () => {
-            const badge = document.getElementById('sync-badge');
-            badge.classList.add('syncing');
-            setTimeout(() => {
-                DataModule.clearSyncQueue();
-                badge.classList.remove('syncing');
-                badge.classList.add('hidden');
-                showToast('✅ Sincronización forzada', 'success');
-            }, 2000);
-        });
-
-        // Comprobante (demo)
-        document.getElementById('comprobante-row').addEventListener('click', () => {
-            showToast('📎 Adjuntar comprobante (demo)', 'info');
-        });
+    function simulateOnlineStatus() {
+        isOnline = navigator.onLine;
+        window.addEventListener('online', () => isOnline = true);
+        window.addEventListener('offline', () => isOnline = false);
     }
 
     // ── Start ──

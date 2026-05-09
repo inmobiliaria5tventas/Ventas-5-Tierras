@@ -4,8 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="../../5t.jfif">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="App Ventas">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a0e1a">
     <title>Los Naranjos — Gestión de Lotes</title>
@@ -14,6 +17,8 @@
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- App Styles -->
     <link rel="stylesheet" href="styles.css">
 </head>
@@ -23,46 +28,40 @@
 
         <!-- ═══ LOADING SCREEN ═══ -->
         <div class="loading-screen">
-            <div class="loading-screen__logo">🏡</div>
+            <img src="../../Logos/Los%20Naranjos.png" class="loading-screen__logo" style="width: 100px; height: auto; margin-bottom: 24px;">
             <div class="loading-screen__text">Cargando Mapa</div>
             <div class="loading-screen__bar">
                 <div class="loading-screen__bar-inner"></div>
             </div>
         </div>
 
-        <!-- ═══ TOP BAR ═══ -->
-        <header class="top-bar">
-            <div class="top-bar__brand">
-                <div class="top-bar__logo">🏡</div>
-                <div>
-                    <div class="top-bar__title">Los Naranjos</div>
-                    <div class="top-bar__subtitle">Gestión de Parcelas</div>
-                </div>
-            </div>
-
-            <!-- Search Bar -->
-            <div class="top-bar__search">
-                <input type="number" id="search-input" class="search-input" placeholder="Buscar lote (ej. 14)"
-                    autocomplete="off">
-                <button id="search-btn" class="search-btn" title="Buscar">🔍</button>
-            </div>
-            <div class="top-bar__actions">
-                <div id="sync-badge" class="sync-badge hidden" title="Cambios pendientes de sincronización">
-                    <span class="sync-badge__icon">🔄</span>
-                    <span id="sync-count">0</span>
-                </div>
-                <div id="conn-status" class="conn-status conn-status--online">
-                    <span class="conn-status__dot"></span> Online
+        <!-- ═══ TOP BAR (Standardized Premium) ═══ -->
+        <header class="app-header">
+            <div class="header-content">
+                <a href="../../index.html" class="back-btn" title="Volver al mapa general">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </a>
+                <div style="text-align: right;">
+                    <div style="font-size: 11px; color: var(--text-dim);">PROYECTO</div>
+                    <div style="font-size: 18px; font-weight: 800;">Los Naranjos</div>
                 </div>
             </div>
         </header>
+
+        <!-- ═══ SEARCH (Standardized Premium) ═══ -->
+        <div class="search-container">
+            <input type="text" id="search-input" class="search-input" placeholder="Buscar lote (ej: 42)..." inputmode="numeric">
+            <button id="search-btn" class="search-btn"><i class="fa-solid fa-magnifying-glass"></i></button>
+        </div>
 
         <!-- ═══ MAP ═══ -->
         <div id="map"></div>
 
         <!-- ═══ FLOATING ACTION BUTTONS ═══ -->
         <div class="fab-container">
-            <!-- Herramientas removidas por solicitud del usuario -->
+            <button id="fab-locate" class="fab fab--locate" title="Mi ubicación">
+                <i class="fa-solid fa-location-crosshairs" style="color:white; font-size: 24px;"></i>
+            </button>
         </div>
 
         <!-- ═══ STATS BAR ═══ -->
@@ -135,6 +134,17 @@
                 <span class="comprobante-row__text">Adjuntar comprobante de pago/reserva</span>
             </div>
 
+            <!-- ── Comment Section ── -->
+            <button id="comment-toggle-btn" class="comment-btn">
+                <span class="comment-btn__icon">💬</span>
+                <span id="comment-btn-preview" class="comment-btn__preview">Agregar comentario...</span>
+                <button id="comment-delete-btn" class="comment-btn__delete" title="Borrar comentario">🗑️</button>
+                <i class="fa-solid fa-chevron-down comment-btn__chevron"></i>
+            </button>
+            <div id="comment-panel" class="comment-panel">
+                <textarea id="comment-textarea" class="comment-textarea" placeholder="Escribe un comentario breve sobre este lote..."></textarea>
+                <button id="comment-save-btn" class="comment-save-btn"><i class="fa-solid fa-floppy-disk"></i> Guardar comentario</button>
+            </div>
 
             <div id="bs-vendida-info" class="vendida-info" style="display:none;">
                 <div class="vendida-info__icon">🔒</div>
@@ -184,9 +194,12 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Data Sources -->
-    <script src="../data/Disponibles_3.js"></script>
-    <script src="../data/Vendidas_2.js"></script>
-    <script src="../data/Reservadas_4.js"></script>
+    <script src="../qgis2web_2026_03_18-17_41_06_922720/data/Disponibles_3.js"></script>
+    <script src="../qgis2web_2026_03_18-17_41_06_922720/data/Vendidas_2.js"></script>
+    <script src="../qgis2web_2026_03_18-17_41_06_922720/data/Reservadas_4.js"></script>
+    <!-- Shared Sync Module -->
+    <script src="../../shared/config.js"></script>
+    <script src="../../shared/sync.js"></script>
     <!-- Data Module -->
     <script src="data.js"></script>
     <!-- App Logic -->
