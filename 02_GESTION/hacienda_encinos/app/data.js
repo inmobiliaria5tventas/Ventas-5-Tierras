@@ -6,7 +6,7 @@
 // ── Data Module ──
 const DataModule = (() => {
     const STORAGE_KEY = 'hacienda_encinos_lotes';
-    const DATA_VERSION = 'v32_atomic_stability';
+    const DATA_VERSION = 'v40_force_refresh';
     const PROJECT_NAME = 'Los Encinos';
     const MAP_CONFIG = {
         center: [-36.4701, -71.8414],
@@ -54,12 +54,16 @@ const DataModule = (() => {
 
     function loadFromStatic() {
         lotesData.features = [];
-        if (typeof window.json_encinos_lotes !== 'undefined') {
-            processBatch(window.json_encinos_lotes);
+        // Intenta cargar desde el archivo maestro de 03_CORAZON
+        const masterData = window.json_brisas_lotes || window.json_copihue_lotes || window.json_encinos_lotes || window.json_naranjos_lotes;
+        
+        if (masterData) {
+            processBatch(masterData);
         } else {
-            processBatch(window.json_Disponibles_4, 'Disponible');
-            processBatch(window.json_Vendidas_3, 'Vendida');
-            processBatch(window.json_Reservadas_5, 'Reservada');
+            // Fallback para archivos antiguos si existen
+            processBatch(typeof window.json_Disponibles_1 !== 'undefined' ? window.json_Disponibles_1 : null, 'Disponible');
+            processBatch(typeof window.json_Vendidas_2 !== 'undefined' ? window.json_Vendidas_2 : null, 'Vendida');
+            processBatch(typeof window.json_Reservadas_3 !== 'undefined' ? window.json_Reservadas_3 : null, 'Reservada');
         }
         save();
     }

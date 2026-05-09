@@ -340,24 +340,29 @@
             const copyError = () => showToast('Error al copiar enlace', 'warning');
             let url = window.location.href;
             
-            // Robust URL transformation from 02_GESTION to 01_CLIENTES
+            // Universal Mapping (Covers all possible folder names)
             const projectMapping = {
                 'las_brisas': 'hacienda_brisas',
+                'Las Brisas': 'hacienda_brisas',
                 'hacienda_copihue': 'hacienda_copihue',
+                'El_Copihue': 'hacienda_copihue',
+                'El Copihue': 'hacienda_copihue',
                 'hacienda_encinos': 'hacienda_encinos',
-                'fundo_naranjos': 'hacienda_naranjos'
+                'Los_Encinos': 'hacienda_encinos',
+                'Los Encinos': 'hacienda_encinos',
+                'fundo_naranjos': 'hacienda_naranjos',
+                'Los Naranjos': 'hacienda_naranjos'
             };
 
-            // 1. Switch main folder (case-insensitive)
-            url = url.replace(/\/(02_GESTION|Proyectos_ventas|proyecto_clientes)\//i, '/01_CLIENTES/');
+            const projTo = projectMapping[Object.keys(projectMapping).find(key => url.toLowerCase().includes('/' + key.toLowerCase().replace(/ /g, '%20') + '/'))];
             
-            // 2. Switch subproject folder based on mapping (case-insensitive)
-            Object.keys(projectMapping).forEach(key => {
-                const regex = new RegExp('/' + key + '/', 'i');
-                if (regex.test(url)) {
-                    url = url.replace(regex, '/' + projectMapping[key] + '/');
-                }
-            });
+            if (projTo) {
+                let baseUrl = url;
+                if (url.match(/02_GESTION/i)) baseUrl = url.split(/02_GESTION/i)[0];
+                else if (url.match(/Proyectos_ventas/i)) baseUrl = url.split(/Proyectos_ventas/i)[0];
+                
+                url = baseUrl + '01_CLIENTES/' + projTo + '/app/index.html';
+            }
 
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(url).then(copySuccess).catch(() => fallbackCopy(url));
@@ -366,11 +371,31 @@
             function fallbackCopy(text) {
                 const ta = document.createElement('textarea');
                 ta.value = text;
-                ta.style.position = 'fixed'; ta.style.opacity = '0.01';
+                // Ensure it's not visible but part of the DOM
+                ta.style.position = 'absolute';
+                ta.style.left = '-9999px';
+                ta.style.top = '0';
                 document.body.appendChild(ta);
+                
+                // Select and copy
+                const selected = document.getSelection().rangeCount > 0 ? document.getSelection().getRangeAt(0) : false;
                 ta.select();
-                try { if (document.execCommand('copy')) copySuccess(); else copyError(); } catch (err) { copyError(); }
+                ta.setSelectionRange(0, 99999); // For mobile
+                
+                let success = false;
+                try {
+                    success = document.execCommand('copy');
+                } catch (err) {
+                    console.error('Fallback copy failed', err);
+                }
+                
                 document.body.removeChild(ta);
+                if (selected) {
+                    document.getSelection().removeAllRanges();
+                    document.getSelection().addRange(selected);
+                }
+
+                if (success) copySuccess(); else copyError();
             }
         });
 

@@ -70,6 +70,19 @@
                     <span class="project-name">Los Naranjos</span>
                 </div>
             </div>
+
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 15px 0;">
+
+            <!-- SHARE PORTAL BUTTON -->
+            <div class="project-card" style="border-color: var(--primary);" id="share-portal-btn">
+                <div style="background: var(--primary); width: 45px; height: 45px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--dark); font-size: 20px;">
+                    <i class="fa-solid fa-share-nodes"></i>
+                </div>
+                <div class="project-info">
+                    <span class="project-name" style="color: var(--primary);">Compartir Portal</span>
+                    <span style="font-size: 10px; color: var(--text-dim);">Copiar enlace de gestión</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -171,6 +184,26 @@
             map.flyTo(pos, 16, { duration: 2 });
             if (window.innerWidth <= 1024) toggleSidebar();
         }
+
+        // --- SHARE LOGIC ---
+        document.getElementById('share-portal-btn').addEventListener('click', () => {
+            const url = window.location.href;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(() => alert('¡Enlace del portal copiado!'));
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = url;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                alert('¡Enlace del portal copiado!');
+            }
+        });
+
+        // Ensure map resizes correctly
+        window.addEventListener('resize', () => map.invalidateSize());
+        setTimeout(() => map.invalidateSize(), 500);
     </script>
 </body>
 

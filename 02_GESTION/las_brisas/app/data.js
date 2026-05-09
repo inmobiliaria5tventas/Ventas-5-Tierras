@@ -6,7 +6,7 @@
 
 const DataModule = (() => {
     const STORAGE_KEY = 'hacienda_brisas_lotes';
-    const DATA_VERSION = 'v32_atomic_stability';
+    const DATA_VERSION = 'v35_force_master_sync';
     const PROJECT_NAME = 'Las Brisas';
     const MAP_CONFIG = {
         center: [-36.385, -71.953],
@@ -54,9 +54,13 @@ const DataModule = (() => {
 
     function loadFromStatic() {
         lotesData.features = [];
-        if (typeof window.json_brisas_lotes !== 'undefined') {
-            processBatch(window.json_brisas_lotes);
+        // Intenta cargar desde el archivo maestro de 03_CORAZON
+        const masterData = window.json_brisas_lotes || window.json_copihue_lotes || window.json_encinos_lotes || window.json_naranjos_lotes;
+        
+        if (masterData) {
+            processBatch(masterData);
         } else {
+            // Fallback para archivos antiguos si existen
             processBatch(typeof window.json_Disponibles_5 !== 'undefined' ? window.json_Disponibles_5 : null, 'Disponible');
             processBatch(typeof window.json_Vendidas_4 !== 'undefined' ? window.json_Vendidas_4 : null, 'Vendida');
             processBatch(typeof window.json_Reservadas_6 !== 'undefined' ? window.json_Reservadas_6 : null, 'Reservada');

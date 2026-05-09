@@ -5,7 +5,7 @@
 
 const DataModule = (() => {
     const STORAGE_KEY = 'hacienda_copihue_lotes';
-    const DATA_VERSION = 'v36_geometry_final_rebuild';
+    const DATA_VERSION = 'v40_force_refresh';
     const PROJECT_NAME = 'El Copihue';
     const MAP_CONFIG = {
         center: [-36.1205, -71.7770],
@@ -53,12 +53,16 @@ const DataModule = (() => {
 
     function loadFromStatic() {
         lotesData.features = [];
-        if (typeof window.json_copihue_lotes !== 'undefined') {
-            processBatch(window.json_copihue_lotes);
+        // Intenta cargar desde el archivo maestro de 03_CORAZON
+        const masterData = window.json_brisas_lotes || window.json_copihue_lotes || window.json_encinos_lotes || window.json_naranjos_lotes;
+        
+        if (masterData) {
+            processBatch(masterData);
         } else {
-            processBatch(window.json_Disponibles_2, 'Disponible');
-            processBatch(window.json_Vendidas_3, 'Vendida');
-            processBatch(window.json_Reservadas_4, 'Reservada');
+            // Fallback para archivos antiguos si existen
+            processBatch(typeof window.json_Disponibles_2 !== 'undefined' ? window.json_Disponibles_2 : null, 'Disponible');
+            processBatch(typeof window.json_Vendidas_3 !== 'undefined' ? window.json_Vendidas_3 : null, 'Vendida');
+            processBatch(typeof window.json_Reservadas_4 !== 'undefined' ? window.json_Reservadas_4 : null, 'Reservada');
         }
         save();
     }
