@@ -273,40 +273,32 @@ const SyncModule = (() => {
     /**
      * Indicador visual de sincronización
      */
+    /**
+     * Indicador visual de sincronización (Versión Minimalista)
+     */
     function updateSyncIndicator(status) {
         var indicator = document.getElementById('sync-indicator');
-        if (!indicator) {
-            indicator = document.createElement('div');
-            indicator.id = 'sync-indicator';
-            indicator.style.cssText = 
-                'position:fixed;top:12px;right:12px;padding:6px 14px;' +
-                'border-radius:20px;font-size:12px;font-weight:600;' +
-                'font-family:Inter,sans-serif;z-index:10000;' +
-                'transition:all 0.3s ease;backdrop-filter:blur(10px);' +
-                'cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.2);';
-            indicator.addEventListener('click', function() {
-                if (isConfigured()) {
-                    updateSyncIndicator('syncing');
-                    fetchFromSheet().then(function() {
-                        updateSyncIndicator('online');
-                        if (typeof window.refreshMap === 'function') window.refreshMap();
-                    });
-                }
-            });
-            document.body.appendChild(indicator);
+        if (!indicator) return; // No auto-create to respect minimalist manual design
+
+        // Remove old classes and add new status
+        indicator.classList.remove('online', 'syncing', 'pending', 'offline');
+        indicator.classList.add(status);
+        
+        // Compatibility with legacy apps (if they don't have the new CSS)
+        if (!indicator.classList.contains('sync-dot')) {
+            var colors = {
+                online: '#22c55e',
+                syncing: '#3b82f6',
+                pending: '#eab308',
+                offline: '#ef4444'
+            };
+            indicator.style.backgroundColor = colors[status] || '#ef4444';
+            indicator.style.color = '#fff';
+            indicator.style.padding = '4px 8px';
+            indicator.style.borderRadius = '20px';
+            indicator.style.fontSize = '10px';
+            indicator.textContent = status.toUpperCase();
         }
-
-        var styles = {
-            online:  { bg: 'rgba(34,197,94,0.9)',  text: '☁️',    color: '#fff' },
-            syncing: { bg: 'rgba(59,130,246,0.9)',  text: '🔄', color: '#fff' },
-            pending: { bg: 'rgba(234,179,8,0.9)',   text: '⏳',        color: '#000' },
-            offline: { bg: 'rgba(107,114,128,0.7)', text: '🔴',          color: '#fff' }
-        };
-
-        var s = styles[status] || styles.offline;
-        indicator.style.backgroundColor = s.bg;
-        indicator.style.color = s.color;
-        indicator.textContent = s.text;
     }
 
     return {
