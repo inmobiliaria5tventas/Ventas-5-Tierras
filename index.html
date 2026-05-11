@@ -42,14 +42,14 @@
         }
 
         .main-logo {
-            height: 100px;
-            margin-bottom: 20px;
+            height: 80px;
+            margin-bottom: 15px;
             filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.3));
         }
 
         h1 {
             font-family: 'Outfit', sans-serif;
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             font-weight: 800;
             background: linear-gradient(to right, #fff, #94a3b8);
             -webkit-background-clip: text;
@@ -59,7 +59,7 @@
 
         .subtitle {
             color: var(--text-dim);
-            font-size: 1.1rem;
+            font-size: 1rem;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
@@ -68,18 +68,21 @@
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 20px;
             width: 100%;
         }
 
         .sections-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
         }
 
-        @media (max-width: 900px) {
-            .sections-grid { grid-template-columns: 1fr; }
+        @media (min-width: 900px) {
+            .sections-grid { 
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
         }
 
         /* ── Card Styling ── */
@@ -88,10 +91,14 @@
             backdrop-filter: blur(12px);
             border: 1px solid var(--glass-border);
             border-radius: 30px;
-            padding: 30px;
+            padding: 25px;
             display: flex;
             flex-direction: column;
             transition: 0.3s;
+        }
+
+        .hub-section--admin {
+            order: -1; /* Forzar que administración aparezca primero en móvil */
         }
 
         .hub-section:hover {
@@ -103,24 +110,24 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .section-icon {
-            width: 50px;
-            height: 50px;
+            width: 44px;
+            height: 44px;
             background: rgba(99, 102, 241, 0.1);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             color: var(--accent-primary);
         }
 
         .section-title {
             font-family: 'Outfit', sans-serif;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
         }
 
@@ -128,18 +135,18 @@
         .project-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
+            gap: 12px;
         }
 
         @media (max-width: 480px) {
-            .project-grid { grid-template-columns: 1fr; }
+            .project-grid { grid-template-columns: 1fr 1fr; } /* Mantener 2 columnas en móvil para ahorrar espacio */
         }
 
         .project-card {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--glass-border);
             border-radius: 20px;
-            padding: 20px;
+            padding: 15px;
             text-decoration: none;
             color: white;
             transition: 0.2s;
@@ -147,7 +154,7 @@
             flex-direction: column;
             align-items: center;
             text-align: center;
-            gap: 10px;
+            gap: 8px;
         }
 
         .project-card:hover {
@@ -157,7 +164,7 @@
         }
 
         .project-card i {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             color: var(--text-dim);
         }
 
@@ -165,7 +172,7 @@
 
         .project-name {
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
         }
 
         /* ── Management Action ── */
@@ -175,24 +182,31 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            gap: 20px;
+            gap: 15px;
             text-align: center;
+            padding: 10px 0;
         }
 
         .admin-btn {
             background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
             color: white;
             text-decoration: none;
-            padding: 20px 40px;
-            border-radius: 20px;
+            padding: 15px 30px;
+            border-radius: 18px;
             font-family: 'Outfit', sans-serif;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             font-weight: 700;
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 12px;
             box-shadow: 0 10px 30px rgba(79, 70, 229, 0.3);
             transition: 0.3s;
+            width: 100%;
+            justify-content: center;
+        }
+
+        @media (min-width: 600px) {
+            .admin-btn { width: auto; }
         }
 
         .admin-btn:hover {
@@ -203,7 +217,7 @@
         .admin-btn:active { transform: scale(0.98); }
 
         .admin-note {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             color: var(--text-dim);
             max-width: 300px;
         }
@@ -211,23 +225,23 @@
         /* ── Footer ── */
         footer {
             margin-top: auto;
-            padding: 40px;
+            padding: 30px;
             text-align: center;
             color: var(--text-dim);
-            font-size: 0.9rem;
-        }
-
-        .footer-logo {
-            opacity: 0.3;
-            height: 30px;
-            margin-top: 10px;
+            font-size: 0.8rem;
         }
 
         /* 📱 MOBILE FIXES */
-        @media (max-width: 480px) {
-            h1 { font-size: 1.8rem; }
-            .hub-section { padding: 20px; }
-            .admin-btn { width: 100%; justify-content: center; padding: 18px; }
+        @media (max-width: 600px) {
+            header { padding: 25px 20px 10px; }
+            .main-logo { height: 60px; margin-bottom: 10px; }
+            h1 { font-size: 1.6rem; }
+            .subtitle { font-size: 0.85rem; }
+            .container { padding: 10px 15px; }
+            .hub-section { padding: 20px; border-radius: 24px; }
+            .project-grid { gap: 10px; }
+            .project-card { padding: 12px; border-radius: 16px; }
+            .project-name { font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -242,6 +256,21 @@
     <div class="container">
         <div class="sections-grid">
             
+            <!-- SECCIÓN GESTIÓN (Ahora Primero) -->
+            <div class="hub-section hub-section--admin">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="section-title">Administración Interna</div>
+                </div>
+                <div class="admin-action">
+                    <a href="02_GESTION/index.html" class="admin-btn">
+                        <i class="fa-solid fa-rocket"></i>
+                        Entrar al CRM
+                    </a>
+                    <p class="admin-note">Acceso restringido para el equipo de 5 Tierras.</p>
+                </div>
+            </div>
+
             <!-- SECCIÓN CLIENTES -->
             <div class="hub-section">
                 <div class="section-header">
@@ -268,20 +297,8 @@
                 </div>
             </div>
 
-            <!-- SECCIÓN GESTIÓN -->
-            <div class="hub-section">
-                <div class="section-header">
-                    <div class="section-icon"><i class="fa-solid fa-shield-halved"></i></div>
-                    <div class="section-title">Administración Interna</div>
-                </div>
-                <div class="admin-action">
-                    <a href="02_GESTION/index.html" class="admin-btn">
-                        <i class="fa-solid fa-rocket"></i>
-                        Entrar al CRM
-                    </a>
-                    <p class="admin-note">Acceso restringido para el equipo de ventas y administración de 5 Tierras.</p>
-                </div>
-            </div>
+        </div>
+    </div>
 
         </div>
     </div>
