@@ -60,19 +60,11 @@
         .stat-val { font-size: 18px; font-weight: 800; }
         .stat-label { font-size: 10px; text-transform: uppercase; color: var(--text-dim); font-weight: 600; letter-spacing: 0.5px; }
 
-        /* Sync Indicator - Repositioned to avoid overlap */
-        /* Sync Indicator - Relocated to top for consistency */
-        .sync-indicator { 
-            position: absolute; top: 15px; right: 15px; z-index: 1000; 
-            width: 28px; height: 28px; background: rgba(30,37,50,0.6); 
-            border-radius: 8px; display: flex; align-items: center; justify-content: center; 
-            border: 1px solid rgba(255,255,255,0.08); font-size: 12px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2); backdrop-filter: blur(8px);
-        }
-        .sync-indicator--syncing { color: var(--primary); animation: spin 2s linear infinite; }
-        .sync-indicator--online { color: var(--success); }
-        .sync-indicator--offline { color: var(--danger); }
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .header-share-btn { width: 38px; height: 38px; border-radius: 12px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.2); color: #818cf8; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.4); pointer-events: auto; }
+        .header-share-btn:active { transform: scale(0.9); background: rgba(99, 102, 241, 0.2); }
+        .header-share-btn i { font-size: 16px; }
+
+        /* ── BOTTOMSHEET Status removed old share style ── */
 
         .bottomsheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; opacity: 0; pointer-events: none; transition: 0.3s; }
         .bottomsheet-overlay.active { opacity: 1; pointer-events: auto; }
@@ -109,7 +101,6 @@
         .lote-label { background: transparent !important; border: none !important; box-shadow: none !important; color: white !important; font-weight: 800 !important; text-shadow: 0 0 4px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,1) !important; pointer-events: none !important; font-size: 11px; }
         .map-low-zoom .lote-label { display: none !important; }
 
-        /* Navigation System - Updated for immediate visibility */
         .nav-container { margin-top: 20px; }
         .nav-options { 
             display: grid; grid-template-columns: 1fr 1fr; gap: 10px; opacity: 1; margin-top: 0;
@@ -141,19 +132,20 @@
 
     <header class="app-header">
         <div class="header-content">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <a href="../../../index.html" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: white; transition: 0.2s;" title="Volver a la Portada Principal">
-                    <i class="fa-solid fa-house"></i>
-                </a>
-                <div style="display: flex; flex-direction: column;">
-                    <div style="font-size: 16px; font-weight: 800; color: #fff;">Hacienda Los Encinos</div>
-                </div>
+            <a href="../../../index.html" class="home-dot-btn" title="Inicio">
+                <i class="fa-solid fa-house"></i>
+            </a>
+            <div class="header-project-info">
+                <div class="project-name-mini">Los Encinos</div>
+                <div id="sync-indicator" class="sync-dot"></div>
             </div>
+            <button id="share-link-btn" class="header-share-btn" title="Compartir Proyecto">
+                <i class="fa-solid fa-share-nodes"></i>
+            </button>
         </div>
     </header>
 
     <button id="fab-locate" class="fab fab--locate"><i class="fa-solid fa-location-crosshairs"></i></button>
-    <div id="sync-indicator" class="sync-indicator"><i class="fa-solid fa-cloud"></i></div>
     <div id="map"></div>
 
     <div id="bottomsheet-overlay" class="bottomsheet-overlay"></div>
@@ -164,7 +156,8 @@
                 <div id="bs-lote-area" class="bottomsheet__area">-- m²</div>
             </div>
         </div>
-        <div id="bs-current-status" class="bottomsheet__current-status"><span>●</span> --</div>
+        <div id="bs-current-status" class="bottomsheet__current-status">--</div>
+
         <div class="detail-row">
             <span class="detail-row__icon">💰</span>
             <div class="detail-row__content">
