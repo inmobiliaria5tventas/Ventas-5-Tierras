@@ -38,26 +38,18 @@
         <!-- ═══ TOP BAR (Standardized Premium) ═══ -->
         <header class="app-header">
             <div class="header-content">
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <a href="../../index.html" class="back-btn" title="Volver al Portal de Gestión">
-                        <i class="fa-solid fa-chevron-left"></i>
-                    </a>
-                    <a href="../../../index.html" class="back-btn" title="Volver a la Portada Principal" style="background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.2);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <a href="../../../index.html" class="home-dot-btn" title="Inicio">
                         <i class="fa-solid fa-house"></i>
                     </a>
-                    <div>
-                        <div style="font-size: 11px; color: var(--text-dim);">PROYECTO</div>
-                        <div style="font-size: 18px; font-weight: 800;">Los Encinos</div>
+                    <div class="header-project-info">
+                        <div class="project-name-mini">Los Encinos</div>
+                        <div id="sync-indicator" class="sync-dot" title="Estado de conexión"></div>
                     </div>
                 </div>
-                <button id="share-link-btn" class="share-btn" title="Compartir enlace">
+                <button id="share-link-btn" class="header-share-btn" title="Compartir Proyecto">
                     <i class="fa-solid fa-share-nodes"></i>
-                    <span>Compartir</span>
                 </button>
-                <div class="sync-indicator" id="sync-indicator">
-                    <i class="fa-solid fa-circle"></i>
-                    <span>Sinc</span>
-                </div>
             </div>
         </header>
 
@@ -131,9 +123,11 @@
             </div>
 
             <!-- Current Status -->
-            <div id="bs-current-status" class="bottomsheet__current-status bottomsheet__current-status--disponible">
-                <span>●</span> Disponible
-            </div>
+            <div class="bottomsheet__current-status bottomsheet__current-status--disponible" id="bs-current-status">
+            <span>●</span> Disponible
+        </div>
+
+
 
             <!-- Quick-Tap Status Buttons -->
             <div class="status-buttons">
