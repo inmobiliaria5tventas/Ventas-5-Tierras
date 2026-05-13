@@ -220,6 +220,52 @@
         
         const locateBtn = document.getElementById('fab-locate');
         if (locateBtn) locateBtn.addEventListener('click', locateUser);
+
+        const shareBtn = document.getElementById('share-link-btn');
+        if (shareBtn) {
+            shareBtn.addEventListener('click', () => {
+                const url = window.location.href;
+                const copySuccess = () => {
+                    const originalHtml = shareBtn.innerHTML;
+                    shareBtn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    shareBtn.style.color = '#10b981';
+                    setTimeout(() => {
+                        shareBtn.innerHTML = originalHtml;
+                        shareBtn.style.color = '';
+                    }, 2000);
+                };
+                const copyError = () => console.error('Error al copiar el enlace');
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(url).then(copySuccess).catch(() => fallbackCopy(url));
+                } else {
+                    fallbackCopy(url);
+                }
+
+                function fallbackCopy(text) {
+                    const ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.position = 'absolute';
+                    ta.style.left = '-9999px';
+                    ta.style.top = '0';
+                    document.body.appendChild(ta);
+                    
+                    const selected = document.getSelection().rangeCount > 0 ? document.getSelection().getRangeAt(0) : false;
+                    ta.select();
+                    ta.setSelectionRange(0, 99999);
+                    
+                    let success = false;
+                    try { success = document.execCommand('copy'); } catch (err) {}
+                    
+                    document.body.removeChild(ta);
+                    if (selected) {
+                        document.getSelection().removeAllRanges();
+                        document.getSelection().addRange(selected);
+                    }
+                    if (success) copySuccess(); else copyError();
+                }
+            });
+        }
     }
 
     function locateUser() {

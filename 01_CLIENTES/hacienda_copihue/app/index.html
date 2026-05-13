@@ -133,17 +133,24 @@
 <body>
     <header class="app-header">
         <div class="header-content">
-            <div class="header-project-info">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <a href="../../../index.html" class="home-dot-btn" title="Inicio" style="background: rgba(255,255,255,0.1); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; text-decoration: none; font-size: 14px;">
+                    <i class="fa-solid fa-house"></i>
+                </a>
+                <div class="header-project-info">
                 <div class="project-name-mini">El Copihue</div>
                 <div id="sync-indicator" class="sync-dot"></div>
+                </div>
             </div>
-            <button id="share-link-btn" class="header-share-btn" title="Compartir Proyecto">
-                <i class="fa-solid fa-share-nodes"></i>
-            </button>
         </div>
     </header>
 
-    <button id="fab-locate" class="fab fab--locate"><i class="fa-solid fa-location-crosshairs"></i></button>
+    <div class="fab-container" style="position: absolute; right: 15px; bottom: 100px; z-index: 10; display: flex; flex-direction: column; gap: 12px;">
+        <button id="share-link-btn" class="fab fab--share" title="Compartir Proyecto" style="position: relative; left: auto; bottom: auto; background: #6366f1; color: white; border: none; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);">
+            <i class="fa-solid fa-share-nodes"></i>
+        </button>
+        <button id="fab-locate" class="fab fab--locate" style="position: relative; left: auto; bottom: auto;"><i class="fa-solid fa-location-crosshairs"></i></button>
+    </div>
     <div id="map"></div>
 
     <div id="bottomsheet-overlay" class="bottomsheet-overlay"></div>
